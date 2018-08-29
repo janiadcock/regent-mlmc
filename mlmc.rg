@@ -13,8 +13,8 @@ local C = terralib.includecstring[[
 local SIM = terralib.includec('diffusion.h')
 terralib.linklibrary('libdiffusion.so')
 
-local pow = regentlib.pow(float)
-local sqrt = regentlib.sqrt(float)
+local pow = regentlib.pow(double)
+local sqrt = regentlib.sqrt(double)
 
 -------------------------------------------------------------------------------
 -- Constants & inputs
@@ -32,7 +32,7 @@ local TOLERANCE = 0.1
 -------------------------------------------------------------------------------
 
 task run_sim(mesh_size : int,
-             uncertainties : float[NUM_UNCERTAINTIES]) : float
+             uncertainties : double[NUM_UNCERTAINTIES]) : double
   return SIM.diffusion_1d(mesh_size, NUM_UNCERTAINTIES, uncertainties)
 end
 
@@ -52,17 +52,17 @@ task main()
   -- Inputs
   var num_samples : int[NUM_LEVELS] = array(20,20,20,20,20)
   var mesh_sizes : int[NUM_LEVELS] = array(4,8,16,32,64)
-  var q_costs : float[NUM_LEVELS] = array(1.0f,8.0f,64.0f,512.0f,4096.0f)
-  var y_costs : float[NUM_LEVELS] =
+  var q_costs : double[NUM_LEVELS] = array(1.0,8.0,64.0,512.0,4096.0)
+  var y_costs : double[NUM_LEVELS] =
     array(q_costs[0],
           q_costs[1] - q_costs[0],
           q_costs[2] - q_costs[1],
           q_costs[3] - q_costs[2],
           q_costs[4] - q_costs[3])
   -- Algorithm state
-  var y : (float[MAX_SAMPLES_PER_LEVEL])[NUM_LEVELS]
-  var y_mean : float[NUM_LEVELS]
-  var y_var : float[NUM_LEVELS]
+  var y : (double[MAX_SAMPLES_PER_LEVEL])[NUM_LEVELS]
+  var y_mean : double[NUM_LEVELS]
+  var y_var : double[NUM_LEVELS]
 
 
 
@@ -73,7 +73,7 @@ task main()
   for lvl = 0, NUM_LEVELS do
     for i = 0, num_samples[lvl] do
       -- Generate random uncertainties, uniformly distributed in [-1.0,1.0]
-      var uncertainties : float[NUM_UNCERTAINTIES]
+      var uncertainties : double[NUM_UNCERTAINTIES]
       for j = 0, NUM_UNCERTAINTIES do
         uncertainties[j] = C.drand48() * 2.0 - 1.0
       end
@@ -89,19 +89,19 @@ task main()
   end
   -- Update estimates for central moments
   for lvl = 0, NUM_LEVELS do
-    y_mean[lvl] = 0.0f
+    y_mean[lvl] = 0.0
     for i = 0, num_samples[lvl] do
       y_mean[lvl] += y[lvl][i]
     end
     y_mean[lvl] /= num_samples[lvl]
-    y_var[lvl] = 0.0f
+    y_var[lvl] = 0.0
     for i = 0, num_samples[lvl] do
       y_var[lvl] += pow(y[lvl][i] - y_mean[lvl], 2)
     end
     y_var[lvl] /= num_samples[lvl] - 1
   end
   -- Update estimate for optimal number of samples
-  var c = 0.0f
+  var c = 0.0
   for lvl = 0, NUM_LEVELS do
     c += sqrt(y_costs[lvl] * y_var[lvl])
   end
@@ -126,11 +126,11 @@ task main()
 
 
   -- Compute MLMC estimator mean & variance
-  var ml_mean = 0.0f
+  var ml_mean = 0.0
   for lvl = 0, NUM_LEVELS do
     ml_mean += y_mean[lvl]
   end
-  var ml_var = 0.0f
+  var ml_var = 0.0
   for lvl = 0, NUM_LEVELS do
     ml_var += y_var[lvl] / num_samples[lvl]
   end

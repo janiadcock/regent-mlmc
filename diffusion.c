@@ -13,21 +13,21 @@
 //
 // Here we set f = -10 and k is a random variable
 
-float diffusion_1d(size_t num_grid_points, size_t num_uncertainties, float *xi_uncertainties) {
+double diffusion_1d(size_t num_grid_points, size_t num_uncertainties, double *xi_uncertainties) {
 
   // Problem parameters
-  float domain_length = 1.0;		// Length of the domain (starts at 0)
-  float u_0 = 0.0;			// Set left boundary value for unknowns
-  float u_1 = 0.0;			// Set right boundary value for unknowns
-  float f = -10.0;			// Set forcing term value
-  float sigma = 1.0;			// Set variability of diffusivity
+  double domain_length = 1.0;		// Length of the domain (starts at 0)
+  double u_0 = 0.0;			// Set left boundary value for unknowns
+  double u_1 = 0.0;			// Set right boundary value for unknowns
+  double f = -10.0;			// Set forcing term value
+  double sigma = 1.0;			// Set variability of diffusivity
 
   // Generate grid array
-  float x_points[num_grid_points];	// Includes boundary points
+  double x_points[num_grid_points];	// Includes boundary points
   for(size_t i = 0; i < num_grid_points; i++) {
 
     // Grid spacing
-    float grid_spacing = domain_length/(num_grid_points-1);
+    double grid_spacing = domain_length/(num_grid_points-1);
 
     // Set points
     x_points[i] = i*grid_spacing;
@@ -35,14 +35,14 @@ float diffusion_1d(size_t num_grid_points, size_t num_uncertainties, float *xi_u
   }
 
   // Generate & set forcing term array
-  float f_terms[num_grid_points];	// Includes boundary points
+  double f_terms[num_grid_points];	// Includes boundary points
   for(size_t i = 0; i < num_grid_points; i++) {
     // Initialize
     f_terms[i] = f;
   }
 
   // Generate & compute stochastic coefficient array
-  float k_coefficients[num_grid_points];	// Includes boundary points
+  double k_coefficients[num_grid_points];	// Includes boundary points
   for(size_t i = 0; i < num_grid_points; i++) {
 
     // Initialize
@@ -53,10 +53,10 @@ float diffusion_1d(size_t num_grid_points, size_t num_uncertainties, float *xi_u
   }
 
   // Solve linear system of equations using TDMA (boundary points solved using identity)
-  float a[num_grid_points];	// Includes boundary points
-  float b[num_grid_points];	// Includes boundary points
-  float c[num_grid_points];	// Includes boundary points
-  float d[num_grid_points];	// Includes boundary points
+  double a[num_grid_points];	// Includes boundary points
+  double b[num_grid_points];	// Includes boundary points
+  double c[num_grid_points];	// Includes boundary points
+  double d[num_grid_points];	// Includes boundary points
   for(size_t i = 1; i < (num_grid_points-1); i++) {
 
     a[i] = 0.5*(k_coefficients[i]+k_coefficients[i-1])/(x_points[i]-x_points[i-1]);

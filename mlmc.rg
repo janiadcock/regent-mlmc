@@ -25,7 +25,7 @@ local NUM_UNCERTAINTIES = 10
 local SEED = 1237
 local MAX_SAMPLES_PER_LEVEL = 100
 local MAX_ITERATIONS = 5
-local TOLERANCE = 0.1
+local TOLERANCE = 0.01
 
 -------------------------------------------------------------------------------
 -- Target simulation
@@ -63,6 +63,7 @@ task main()
   var y : (double[MAX_SAMPLES_PER_LEVEL])[NUM_LEVELS]
   var y_mean : double[NUM_LEVELS]
   var y_var : double[NUM_LEVELS]
+  var opt_samples : int[NUM_LEVELS]
 
 
 
@@ -107,7 +108,7 @@ task main()
   end
   c /= pow(TOLERANCE,2)/2.0
   for lvl = 0, NUM_LEVELS do
-    num_samples[lvl] =
+    opt_samples[lvl] =
       [int](C.round(c * sqrt(y_var[lvl] / y_costs[lvl])))
     regentlib.assert(num_samples[lvl] < MAX_SAMPLES_PER_LEVEL, '')
   end
@@ -134,7 +135,8 @@ task main()
   for lvl = 0, NUM_LEVELS do
     ml_var += y_var[lvl] / num_samples[lvl]
   end
-
+  C.printf('MLMC mean: %lf\n', ml_mean)
+  C.printf('MLMC stddev: %lf\n', sqrt(ml_var))
 
 
 

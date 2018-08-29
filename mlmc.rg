@@ -23,8 +23,8 @@ local sqrt = regentlib.sqrt(double)
 local NUM_LEVELS = 5
 local NUM_UNCERTAINTIES = 10
 local SEED = 1237
-local MAX_SAMPLES_PER_LEVEL = 100
-local MAX_ITERS = 5
+local MAX_SAMPLES_PER_LEVEL = 1000
+local MAX_ITERS = 10
 local TOLERANCE = 0.01
 
 -------------------------------------------------------------------------------

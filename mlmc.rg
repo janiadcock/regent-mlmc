@@ -55,10 +55,10 @@ task main()
   var q_costs : double[NUM_LEVELS] = array(1.0,8.0,64.0,512.0,4096.0)
   var y_costs : double[NUM_LEVELS] =
     array(q_costs[0],
-          q_costs[1] - q_costs[0],
-          q_costs[2] - q_costs[1],
-          q_costs[3] - q_costs[2],
-          q_costs[4] - q_costs[3])
+          q_costs[1] + q_costs[0],
+          q_costs[2] + q_costs[1],
+          q_costs[3] + q_costs[2],
+          q_costs[4] + q_costs[3])
   -- Algorithm state
   var y : (double[MAX_SAMPLES_PER_LEVEL])[NUM_LEVELS]
   var y_mean : double[NUM_LEVELS]

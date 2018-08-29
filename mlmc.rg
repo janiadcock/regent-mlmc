@@ -125,11 +125,25 @@ task main()
       c += sqrt(y_costs[lvl] * y_var[lvl])
     end
     c /= pow(TOLERANCE,2)/2.0
-    C.printf('Optimal number of samples:')
     for lvl = 0, NUM_LEVELS do
       opt_samples[lvl] =
         [int](C.round(c * sqrt(y_var[lvl] / y_costs[lvl])))
       regentlib.assert(opt_samples[lvl] < MAX_SAMPLES_PER_LEVEL, '')
+    end
+    -- Print output
+    C.printf('Iteration %d:\n', iter)
+    C.printf('  y_mean =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %e', y_mean[lvl])
+    end
+    C.printf('\n')
+    C.printf('  y_var =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %e', y_var[lvl])
+    end
+    C.printf('\n')
+    C.printf('  Nl =')
+    for lvl = 0, NUM_LEVELS do
       C.printf(' %d', opt_samples[lvl])
     end
     C.printf('\n')
@@ -154,8 +168,9 @@ task main()
   for lvl = 0, NUM_LEVELS do
     ml_var += y_var[lvl] / num_samples[lvl]
   end
-  C.printf('MLMC mean: %lf\n', ml_mean)
-  C.printf('MLMC stddev: %lf\n', sqrt(ml_var))
+  C.printf('MLMC mean: %e\n', ml_mean)
+  C.printf('MLMC stddev: %e\n', sqrt(ml_var))
+  C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)
 end
 
 regentlib.start(main)

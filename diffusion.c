@@ -13,16 +13,18 @@
 //
 // del(k del(u) ) = f on [0,1] subject to u(0) = 0 u(1) = 0
 //
-// Here we set f = -10 and k is a random variable
+// Here we set f = -1 and k is a random diffusivity
 
-double diffusion_1d(size_t num_grid_points, size_t num_uncertainties, double *xi_uncertainties) {
+
+double diffusion_1d(size_t num_grid_points,size_t num_uncertainties,double *xi_uncertainties) {
 
   // Problem parameters
   double domain_length = 1.0;		// Length of the domain (starts at 0)
   double u_0 = 0.0;			// Set left boundary value for unknowns
   double u_1 = 0.0;			// Set right boundary value for unknowns
-  double f = -10.0;			// Set forcing term value
-  double sigma = 1.0;			// Set variability of diffusivity
+  double f = -1.0;			// Set forcing term value
+  double sigma = 4.0;			// Set variability of diffusivity
+
 
   // Generate grid array
   double x_points[num_grid_points];	// Includes boundary points
@@ -36,12 +38,16 @@ double diffusion_1d(size_t num_grid_points, size_t num_uncertainties, double *xi
 
   }
 
+
   // Generate & set forcing term array
   double f_terms[num_grid_points];	// Includes boundary points
   for(size_t i = 0; i < num_grid_points; i++) {
+
     // Initialize
     f_terms[i] = f;
+
   }
+
 
   // Generate & compute stochastic coefficient array
   double k_coefficients[num_grid_points];	// Includes boundary points
@@ -50,9 +56,13 @@ double diffusion_1d(size_t num_grid_points, size_t num_uncertainties, double *xi
     // Initialize
     k_coefficients[i] = 1.0;
     for(size_t k = 0; k < num_uncertainties; k++) {
-      k_coefficients[i] += sigma*((1.0/((k+1.0)*(k+1.0)*PI*PI))*cos(2.0*PI*(k+1.0)*x_points[i])*xi_uncertainties[k]);
+
+      k_coefficients[i] += sigma*((1.0/((k+1.0)*(k+1.0)*PI*PI))*cos(2.0*PI*x_points[i])*xi_uncertainties[k]);
+
     }
+
   }
+
 
   // Solve linear system of equations using TDMA (boundary points solved using identity)
   double a[num_grid_points];	// Includes boundary points
@@ -61,32 +71,41 @@ double diffusion_1d(size_t num_grid_points, size_t num_uncertainties, double *xi
   double d[num_grid_points];	// Includes boundary points
   for(size_t i = 1; i < (num_grid_points-1); i++) {
 
-    a[i] = 0.5*(k_coefficients[i]+k_coefficients[i-1])/(x_points[i]-x_points[i-1]);
-    b[i] = (-1.0)*0.5*(k_coefficients[i+1]+k_coefficients[i])/(x_points[i+1]-x_points[i])+(-1.0)*0.5*(k_coefficients[i]+k_coefficients[i-1])/(x_points[i]-x_points[i-1]);
-    c[i] = 0.5*(k_coefficients[i+1]+k_coefficients[i])/(x_points[i+1]-x_points[i]);
-    d[i] = f_terms[i]*0.5*(x_points[i+1]-x_points[i-1]);
+    a[i] = ( 0.5*(k_coefficients[i]+k_coefficients[i-1])/(x_points[i]-x_points[i-1]) )/( 0.5*(x_points[i+1]-x_points[i-1]) );
+    b[i] = ( (-1.0)*0.5*(k_coefficients[i+1]+k_coefficients[i])/(x_points[i+1]-x_points[i])+(-1.0)*0.5*(k_coefficients[i]+k_coefficients[i-1])/(x_points[i]-x_points[i-1]) )/( 0.5*(x_points[i+1]-x_points[i-1]) );
+    c[i] = ( 0.5*(k_coefficients[i+1]+k_coefficients[i])/(x_points[i+1]-x_points[i]) )/( 0.5*(x_points[i+1]-x_points[i-1]) );
+    d[i] = f_terms[i];
 
   }
   a[0] = 0; b[0] = 1.0; c[0] = 0.0; d[0] = u_0;
   a[num_grid_points-1] = 0; b[num_grid_points-1] = 1.0; c[num_grid_points-1] = 0.0; d[num_grid_points-1] = u_1;
 
   // TDMA
-  size_t n = num_grid_points-1;
-  c[0] = c[0]/b[0];
-  d[0] = d[0]/b[0];
+  double c_star[num_grid_points];	// Includes boundary points
+  double d_star[num_grid_points];	// Includes boundary points
 
-  for (size_t i = 1; i < n; i++) {
+  c_star[0] = c[0]/b[0];
+  d_star[0] = d[0]/b[0];
 
-    c[i] = c[i]/(b[i] - a[i]*c[i-1]);
-    d[i] = (d[i] - a[i]*d[i-1]) / (b[i] - a[i]*c[i-1]);
+  double m = 0.0;
+  for(int i = 1; i < (num_grid_points-1); i++) {
+
+    m = 1.0/(b[i]-a[i]*c_star[i-1]);
+    c_star[i] = c[i]*m;
+    d_star[i] = (d[i]-a[i]*d_star[i-1])*m;
+
+  }
+  m = 1.0/(b[num_grid_points-1]-a[num_grid_points-1]*c_star[num_grid_points-2]);
+  d_star[num_grid_points-1] = (d[num_grid_points-1]-a[num_grid_points-1]*d_star[num_grid_points-1])*m;
+
+  double u_unknowns[num_grid_points];	// Includes boundary points
+  u_unknowns[num_grid_points-1] = d_star[num_grid_points-1];
+  for(int i = (num_grid_points-2); i > -1; i--) {
+
+    u_unknowns[i] = d_star[i]-c_star[i]*u_unknowns[i+1];
 
   }
 
-  d[n] = (d[n] - a[n]*d[n-1]) / (b[n] - a[n]*c[n-1]);
+  return u_unknowns[num_grid_points/2];
 
-  for (int i = n; i-- > 0;) {
-    d[i] -= c[i]*d[i+1];
-  }
-
-  return d[num_grid_points/2];
 }

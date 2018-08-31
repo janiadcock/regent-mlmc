@@ -1,4 +1,4 @@
-// Code by Lluis Jofre-Cruanyes
+// Code by Lluis Jofre Cruanyes
 
 #include <stdio.h>
 #include <math.h>
@@ -23,7 +23,7 @@ double diffusion_1d(size_t num_grid_points,size_t num_uncertainties,double *xi_u
   double u_0 = 0.0;			// Set left boundary value for unknowns
   double u_1 = 0.0;			// Set right boundary value for unknowns
   double f = -1.0;			// Set forcing term value
-  double sigma = 4.0;			// Set variability of diffusivity
+  double sigma = 1.0;			// Set variability of diffusivity
 
 
   // Generate grid array
@@ -57,7 +57,7 @@ double diffusion_1d(size_t num_grid_points,size_t num_uncertainties,double *xi_u
     k_coefficients[i] = 1.0;
     for(size_t k = 0; k < num_uncertainties; k++) {
 
-      k_coefficients[i] += sigma*((1.0/((k+1.0)*(k+1.0)*PI*PI))*cos(2.0*PI*x_points[i])*xi_uncertainties[k]);
+      k_coefficients[i] += sigma*((1.0/((k+1.0)*(k+1.0)*PI*PI))*cos(2.0*PI*(k+1.0)*x_points[i])*xi_uncertainties[k]);
 
     }
 
@@ -96,7 +96,7 @@ double diffusion_1d(size_t num_grid_points,size_t num_uncertainties,double *xi_u
 
   }
   m = 1.0/(b[num_grid_points-1]-a[num_grid_points-1]*c_star[num_grid_points-2]);
-  d_star[num_grid_points-1] = (d[num_grid_points-1]-a[num_grid_points-1]*d_star[num_grid_points-1])*m;
+  d_star[num_grid_points-1] = (d[num_grid_points-1]-a[num_grid_points-1]*d_star[num_grid_points-2])*m;
 
   double u_unknowns[num_grid_points];	// Includes boundary points
   u_unknowns[num_grid_points-1] = d_star[num_grid_points-1];

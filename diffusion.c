@@ -88,7 +88,7 @@ double diffusion_1d(size_t num_grid_points,size_t num_uncertainties,double *xi_u
   d_star[0] = d[0]/b[0];
 
   double m = 0.0;
-  for(int i = 1; i < (num_grid_points-1); i++) {
+  for(size_t i = 1; i < (num_grid_points-1); i++) {
 
     m = 1.0/(b[i]-a[i]*c_star[i-1]);
     c_star[i] = c[i]*m;

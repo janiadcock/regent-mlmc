@@ -34,7 +34,8 @@ local NUM_UNCERTAINTIES = 9
 local SEED = 1237
 local MAX_SAMPLES_PER_LEVEL = 1000
 local MAX_ITERS = 10
-local TOLERANCE = 0.01
+local TOLERANCE = 0.001
+
 
 -------------------------------------------------------------------------------
 -- Target simulation

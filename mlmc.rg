@@ -4,15 +4,24 @@ import 'regent'
 -- Imports
 -------------------------------------------------------------------------------
 
+-- These headers are parsed, and the symbols they define become available to
+-- the code below. When the code is executed, these symbols will be looked up
+-- in the set of linked files.
 local C = terralib.includecstring[[
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 ]]
 
+-- Similar to above, we parse our simulation's header file to import the name
+-- of our simulation kernel.
 local SIM = terralib.includec('diffusion.h')
+-- We also dynamically link our simulation's code into the current process,
+-- because by default the Regent compiler will compile our tasks and load them
+-- into the current process to be executed.
 terralib.linklibrary('libdiffusion.so')
 
+-- Load some built-in math functions.
 local pow = regentlib.pow(double)
 local sqrt = regentlib.sqrt(double)
 
@@ -62,7 +71,7 @@ end
 -------------------------------------------------------------------------------
 
 task main()
-  -- Initialize RNG
+  -- Initialize RNG.
   C.srand48(SEED)
   -- Inputs
   var opt_samples : int[NUM_LEVELS] = array(20,20,20,20,20)
@@ -81,10 +90,10 @@ task main()
   var is = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL})
   var y = region(is, double)
   var p_y = partition(equal, y, is)
-  var iter = 0
   -- Main loop
+  var iter = 0
   for iter = 0, MAX_ITERS do
-    -- Run remaining samples for all levels
+    -- Run remaining samples for all levels.
     for lvl = 0, NUM_LEVELS do
       for i = num_samples[lvl], opt_samples[lvl] do
         -- Generate random uncertainties, uniformly distributed in [-1.0,1.0]
@@ -106,7 +115,7 @@ task main()
       end
       num_samples[lvl] max= opt_samples[lvl]
     end
-    -- Update estimates for central moments
+    -- Update estimates for central moments.
     for lvl = 0, NUM_LEVELS do
       y_mean[lvl] = 0.0
       for i = 0, num_samples[lvl] do
@@ -119,7 +128,7 @@ task main()
       end
       y_var[lvl] /= num_samples[lvl] - 1
     end
-    -- Update estimates for optimal number of samples
+    -- Update estimates for the optimal number of samples.
     var c = 0.0
     for lvl = 0, NUM_LEVELS do
       c += sqrt(y_costs[lvl] * y_var[lvl])
@@ -128,9 +137,10 @@ task main()
     for lvl = 0, NUM_LEVELS do
       opt_samples[lvl] =
         [int](C.round(c * sqrt(y_var[lvl] / y_costs[lvl])))
-      regentlib.assert(opt_samples[lvl] < MAX_SAMPLES_PER_LEVEL, '')
+      regentlib.assert(opt_samples[lvl] < MAX_SAMPLES_PER_LEVEL,
+                       'Please increase MAX_SAMPLES_PER_LEVEL')
     end
-    -- Print output
+    -- Print output.
     C.printf('Iteration %d:\n', iter)
     C.printf('  y_mean =')
     for lvl = 0, NUM_LEVELS do
@@ -147,7 +157,7 @@ task main()
       C.printf(' %d', opt_samples[lvl])
     end
     C.printf('\n')
-    -- Decide if converged
+    -- Decide if we have converged.
     var opt_samples_ran = true
     for lvl = 0, NUM_LEVELS do
       if opt_samples[lvl] > num_samples[lvl] then
@@ -159,7 +169,7 @@ task main()
       break
     end
   end
-  -- Compute MLMC estimator mean & variance
+  -- Compute MLMC estimator mean & variance.
   var ml_mean = 0.0
   for lvl = 0, NUM_LEVELS do
     ml_mean += y_mean[lvl]

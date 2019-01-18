@@ -11,6 +11,7 @@ local C = terralib.includecstring[[
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 ]]
 
 -- Similar to above, we parse our simulation's header file to import the name
@@ -29,7 +30,7 @@ local sqrt = regentlib.sqrt(double)
 -- Constants & inputs
 -------------------------------------------------------------------------------
 
-local NUM_LEVELS = 5
+local NUM_LEVELS = 2
 local NUM_UNCERTAINTIES = 9
 local SEED = 1237
 local MAX_SAMPLES_PER_LEVEL = 1000
@@ -60,28 +61,44 @@ local fspace Sample {
 
 -- This task accepts an arbitrary-size collection of samples and computes the
 -- associated simulation response (if it hasn't already been computed).
-local task eval_samples(samples : region(ispace(int2d),Sample))
-where
-  reads(samples.{level, mesh_size_l, mesh_size_l_1, uncertainties}),
-  writes(samples.response),
-  reads writes(samples.state)
-do
-  for s in samples do
-    if s.state == State.ACTIVE then
-      -- Run the simulation once or twice, depending on the sample's level.
-      if s.level > 0 then
-        var q_l =
-          SIM.diffusion_1d(s.mesh_size_l, NUM_UNCERTAINTIES, s.uncertainties)
-        var q_l_1 =
-          SIM.diffusion_1d(s.mesh_size_l_1, NUM_UNCERTAINTIES, s.uncertainties)
-        s.response = q_l - q_l_1
-      else
-        s.response =
-          SIM.diffusion_1d(s.mesh_size_l, NUM_UNCERTAINTIES, s.uncertainties)
+
+local function mk_eval_samples(level)
+  local task eval_samples(samples : region(ispace(int2d),Sample))
+  where
+    reads(samples.{level, mesh_size_l, mesh_size_l_1, uncertainties}),
+    writes(samples.response),
+    reads writes(samples.state)
+  do
+    for s in samples do
+      if s.state == State.ACTIVE then
+        -- Run the simulation once or twice, depending on the sample's level.
+        if s.level > 0 then
+          var q_l =
+            SIM.diffusion_1d(s.mesh_size_l, NUM_UNCERTAINTIES, s.uncertainties)
+          var q_l_1 =
+            SIM.diffusion_1d(s.mesh_size_l_1, NUM_UNCERTAINTIES, s.uncertainties)
+          s.response = q_l - q_l_1
+        else
+          s.response =
+            SIM.diffusion_1d(s.mesh_size_l, NUM_UNCERTAINTIES, s.uncertainties)
+        end
+        s.state = State.COMPLETED
+        if s.level == 0 then
+          C.usleep(1000)
+        elseif s.level == 1 then
+          C.usleep(5000)
+        else regentlib.assert(false, '') end
       end
-      s.state = State.COMPLETED
     end
   end
+  local name = 'eval_samples_'..level
+  eval_samples:set_name(name)
+  eval_samples:get_primary_variant():get_ast().name[1] = name
+  return eval_samples
+end
+local eval_samples = {}
+for lvl = 0, NUM_LEVELS-1 do
+  eval_samples[lvl] = mk_eval_samples(lvl)
 end
 
 local task calc_mean(samples : region(ispace(int2d),Sample)) : double
@@ -123,17 +140,14 @@ task main()
   -- Initialize RNG.
   C.srand48(SEED)
   -- Inputs
-  var opt_samples : int[NUM_LEVELS] = array(20,20,20,20,20)
-  var mesh_sizes : int[NUM_LEVELS] = array(4,8,16,32,64)
-  var q_costs : double[NUM_LEVELS] = array(1.0,8.0,64.0,512.0,4096.0)
+  var opt_samples : int[NUM_LEVELS] = array(10,2)
+  var mesh_sizes : int[NUM_LEVELS] = array(4,8)
+  var q_costs : double[NUM_LEVELS] = array(1.0,8.0)
   var y_costs : double[NUM_LEVELS] =
     array(q_costs[0],
-          q_costs[1] + q_costs[0],
-          q_costs[2] + q_costs[1],
-          q_costs[3] + q_costs[2],
-          q_costs[4] + q_costs[3])
+          q_costs[1] + q_costs[0])
   -- Algorithm state
-  var num_samples : int[NUM_LEVELS] = array(0,0,0,0,0)
+  var num_samples : int[NUM_LEVELS] = array(0,0)
   var y_mean : double[NUM_LEVELS]
   var y_var : double[NUM_LEVELS]
   -- Region of samples
@@ -164,7 +178,7 @@ task main()
   -- Main loop
   var iter = 0
   for iter = 0, MAX_ITERS do
-    -- Run remaining samples for all levels.
+    -- Create remaining samples for all levels.
     for lvl = 0, NUM_LEVELS do
       for i = num_samples[lvl], opt_samples[lvl] do
         -- Fill in the details for an additional sample.
@@ -177,6 +191,11 @@ task main()
         for j = 0, NUM_UNCERTAINTIES do
           samples[{lvl,i}].uncertainties[j] = C.drand48() * 2.0 - 1.0
         end
+      end
+    end
+    -- Run remaining samples for all levels.
+    for lvl = NUM_LEVELS-1, -1, -1 do
+      for i = num_samples[lvl], opt_samples[lvl] do
         -- Invoke `eval_samples` for a set of samples containing just the
         -- newly created sample. This task will be launched asynchronously; the
         -- main task will continue running and launching new tasks. The runtime
@@ -184,7 +203,13 @@ task main()
         -- all tasks launched before it. It will conclude that the new task is
         -- independent from all the others, and thus can be queued to run
         -- immediately.
-        eval_samples(p_samples_fine[{lvl,i}])
+        if lvl == 0 then
+          [eval_samples[0]](p_samples_fine[{lvl,i}])
+        elseif lvl == 1 then
+          [eval_samples[1]](p_samples_fine[{lvl,i}])
+        else
+          regentlib.assert(false, '')
+        end
       end
       num_samples[lvl] max= opt_samples[lvl]
     end

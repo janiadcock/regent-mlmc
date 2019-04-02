@@ -16,7 +16,7 @@
 // Here we set f = -1 and k is a random diffusivity
 
 
-double diffusion_1d(size_t num_grid_points,size_t num_uncertainties,double *xi_uncertainties) {
+double ellip_1d(size_t num_grid_points,size_t num_uncertainties,double *xi_uncertainties) {
 
   // Problem parameters
   double domain_length = 1.0;		// Length of the domain (starts at 0)

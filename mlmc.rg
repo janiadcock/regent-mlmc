@@ -29,8 +29,8 @@ local sqrt = regentlib.sqrt(double)
 -- Constants & inputs
 -------------------------------------------------------------------------------
 
-local NUM_LEVELS = 5
-local NUM_UNCERTAINTIES = 9
+local NUM_LEVELS = 3
+local NUM_UNCERTAINTIES = 1
 local SEED = 1237
 local MAX_SAMPLES_PER_LEVEL = 1000
 local MAX_ITERS = 10
@@ -112,7 +112,7 @@ do
       count += 1
     end
   end
-  return acc / (count - 1)
+  return acc / count
 end
 
 -------------------------------------------------------------------------------
@@ -123,17 +123,15 @@ task main()
   -- Initialize RNG.
   C.srand48(SEED)
   -- Inputs
-  var opt_samples : int[NUM_LEVELS] = array(20,20,20,20,20)
-  var mesh_sizes : int[NUM_LEVELS] = array(4,8,16,32,64)
-  var q_costs : double[NUM_LEVELS] = array(1.0,8.0,64.0,512.0,4096.0)
+  var opt_samples : int[NUM_LEVELS] = array(20,20,20)
+  var mesh_sizes : int[NUM_LEVELS] = array(3, 5, 9)
+  var q_costs : double[NUM_LEVELS] = array(1.0,2.0,4.0)
   var y_costs : double[NUM_LEVELS] =
     array(q_costs[0],
-          q_costs[1] + q_costs[0],
-          q_costs[2] + q_costs[1],
-          q_costs[3] + q_costs[2],
-          q_costs[4] + q_costs[3])
+          q_costs[1],
+          q_costs[2])
   -- Algorithm state
-  var num_samples : int[NUM_LEVELS] = array(0,0,0,0,0)
+  var num_samples : int[NUM_LEVELS] = array(0,0,0)
   var y_mean : double[NUM_LEVELS]
   var y_var : double[NUM_LEVELS]
   -- Region of samples
@@ -175,7 +173,8 @@ task main()
           samples[{lvl,i}].mesh_size_l_1 = mesh_sizes[lvl-1]
         end
         for j = 0, NUM_UNCERTAINTIES do
-          samples[{lvl,i}].uncertainties[j] = C.drand48() * 2.0 - 1.0
+          samples[{lvl,i}].uncertainties[j] = .5
+          --samples[{lvl,i}].uncertainties[j] = C.drand48()
         end
         -- Invoke `eval_samples` for a set of samples containing just the
         -- newly created sample. This task will be launched asynchronously; the
@@ -186,7 +185,12 @@ task main()
         -- immediately.
         eval_samples(p_samples_fine[{lvl,i}])
       end
+      C.printf('level: %d \n', lvl)
+      C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
       num_samples[lvl] max= opt_samples[lvl]
+      --C.printf('max: %f', max)
+      C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
+      C.printf('opt_samples[lvl]: %d \n', opt_samples[lvl])
     end
     -- Update estimates for central moments.
     for lvl = 0, NUM_LEVELS do
@@ -213,6 +217,12 @@ task main()
     end
     -- Print output.
     C.printf('Iteration %d:\n', iter)
+    C.printf('  y_costs =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %e', y_costs[lvl])
+    end
+  
+    C.printf('\n')
     C.printf('  y_mean =')
     for lvl = 0, NUM_LEVELS do
       C.printf(' %e', y_mean[lvl])

@@ -35,7 +35,7 @@ double diffusion_1d(size_t num_grid_points,size_t num_uncertainties,double *xi_u
 
     // Set points
     x_points[i] = i*grid_spacing;
-    printf("i: %zu, x_points[i]: %f \n", i, x_points[i]);
+    //printf("i: %zu, x_points[i]: %f \n", i, x_points[i]);
 
   }
 
@@ -56,10 +56,13 @@ double diffusion_1d(size_t num_grid_points,size_t num_uncertainties,double *xi_u
 
     // Initialize
     k_coefficients[i] = 1.0;
+    //k_coefficients[i] = 1.25;
     for(size_t k = 0; k < num_uncertainties; k++) {
-
-      k_coefficients[i] += sigma*((1.0/((k+1.0)*(k+1.0)*PI*PI))*cos(2.0*PI*(k+1.0)*x_points[i])*xi_uncertainties[k]);
-      printf("i: %zu, k_coefficients[i]: %f \n", i, k_coefficients[i]);
+      k_coefficients[i] += xi_uncertainties[k]*x_points[i];
+      //printf("xi_uncertainties[k]: %f \n", xi_uncertainties[k]);
+      //printf("x_points[i]: %f \n", x_points[i]);
+      //k_coefficients[i] += sigma*((1.0/((k+1.0)*(k+1.0)*PI*PI))*cos(2.0*PI*(k+1.0)*x_points[i])*xi_uncertainties[k]);
+      //printf("i: %zu, k_coefficients[i]: %f \n", i, k_coefficients[i]);
     }
 
   }
@@ -104,12 +107,12 @@ double diffusion_1d(size_t num_grid_points,size_t num_uncertainties,double *xi_u
   for(int i = (num_grid_points-2); i > -1; i--) {
 
     u_unknowns[i] = d_star[i]-c_star[i]*u_unknowns[i+1];
-    printf("i: %d, u_unknowns[i]: %f \n", i, u_unknowns[i]);
+    //printf("i: %d, u_unknowns[i]: %f \n", i, u_unknowns[i]);
   }
-  printf("i: %zu, u_unknowns[%zu]: %f \n", num_grid_points-1, num_grid_points-1, u_unknowns[num_grid_points-1]);
-  printf("num_grid_point: %zu \n", num_grid_points);
-  printf("grid_spacing: %f \n", grid_spacing);
-  if (num_grid_points == 3) {printf("uncertainty: %f", xi_uncertainties[0]);}
+  //printf("i: %zu, u_unknowns[%zu]: %f \n", num_grid_points-1, num_grid_points-1, u_unknowns[num_grid_points-1]);
+  //printf("num_grid_point: %zu \n", num_grid_points);
+  //printf("grid_spacing: %f \n", grid_spacing);
+  //if (num_grid_points == 3) {printf("uncertainty: %f", xi_uncertainties[0]);}
   double sum = 0; 
   for (size_t i=0; i<num_grid_points; i++) {sum += u_unknowns[i]*grid_spacing;}
   return sum;

@@ -24,7 +24,7 @@ terralib.linklibrary('libdiffusion.so')
 -- Load some built-in math functions.
 local pow = regentlib.pow(double)
 local sqrt = regentlib.sqrt(double)
-
+local ceil = regentlib.ceil(double)
 -------------------------------------------------------------------------------
 -- Constants & inputs
 -------------------------------------------------------------------------------
@@ -108,14 +108,15 @@ do
   var count = 0
   for s in samples do
     if s.state == State.COMPLETED then
-      acc += pow(s.response - mean, 2)
-      count += 1
+      --acc += pow(s.response - mean, 2) --old version
+      acc += pow(s.response, 2)
+      --count += 1
     end
   end
-  return acc / count
+  --return acc / count
+  return acc
 end
 
--------------------------------------------------------------------------------
 -- Main
 -------------------------------------------------------------------------------
 
@@ -123,7 +124,7 @@ task main()
   -- Initialize RNG.
   C.srand48(SEED)
   -- Inputs
-  var opt_samples : int[NUM_LEVELS] = array(20,20,20)
+  var opt_samples : int[NUM_LEVELS] = array(1000,1000,1000)
   var mesh_sizes : int[NUM_LEVELS] = array(3, 5, 9)
   var q_costs : double[NUM_LEVELS] = array(1.0,2.0,4.0)
   var y_costs : double[NUM_LEVELS] =
@@ -173,8 +174,8 @@ task main()
           samples[{lvl,i}].mesh_size_l_1 = mesh_sizes[lvl-1]
         end
         for j = 0, NUM_UNCERTAINTIES do
-          samples[{lvl,i}].uncertainties[j] = .5
-          --samples[{lvl,i}].uncertainties[j] = C.drand48()
+          --samples[{lvl,i}].uncertainties[j] = .5
+          samples[{lvl,i}].uncertainties[j] = C.drand48()
         end
         -- Invoke `eval_samples` for a set of samples containing just the
         -- newly created sample. This task will be launched asynchronously; the
@@ -193,6 +194,7 @@ task main()
       C.printf('opt_samples[lvl]: %d \n', opt_samples[lvl])
     end
     -- Update estimates for central moments.
+    -- Update estimates for central moments.
     for lvl = 0, NUM_LEVELS do
       -- At this point we switch to using the partition by level; the runtime
       -- will analyze the dependencies and conclude that the call to
@@ -201,7 +203,18 @@ task main()
       -- execution of `calc_mean` will have to wait until those tasks have
       -- completed (the main task is free to continue emitting tasks, however).
       y_mean[lvl] = calc_mean(p_samples_by_level[{lvl,0}])
-      y_var[lvl] = calc_var(p_samples_by_level[{lvl,0}], y_mean[lvl])
+      --y_var[lvl] = calc_var(p_samples_by_level[{lvl,0}], y_mean[lvl]) (old version)
+     
+      var count = 0 
+      for s in p_samples_by_level[{lvl,0}] do
+        if s.state == State.COMPLETED then
+          count += 1
+        end
+      end
+      y_var[lvl] = calc_var(p_samples_by_level[{lvl,0}], y_mean[lvl])/count - pow(y_mean[lvl], 2)
+      if y_var[lvl] < 0.0 then
+        y_var[lvl] = 0.0
+      end
     end
     -- Update estimates for the optimal number of samples.
     var c = 0.0
@@ -211,7 +224,7 @@ task main()
     c /= pow(TOLERANCE,2)/2.0
     for lvl = 0, NUM_LEVELS do
       opt_samples[lvl] =
-        [int](C.round(c * sqrt(y_var[lvl] / y_costs[lvl])))
+        [int](ceil(c * sqrt(y_var[lvl] / y_costs[lvl])))
       regentlib.assert(opt_samples[lvl] < MAX_SAMPLES_PER_LEVEL,
                        'Please increase MAX_SAMPLES_PER_LEVEL')
     end

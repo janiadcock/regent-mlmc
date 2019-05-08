@@ -40,6 +40,7 @@ local TOLERANCE = 0.001
 
 local NUM_SAMPLES_CONV = 1000 
 local NUM_LEVELS_CONV = 9
+local NUM_U_INPUT = 9000
 
 -- Enumeration of states that a sample can be in.
 local State = {
@@ -47,6 +48,19 @@ local State = {
   ACTIVE = 1,
   COMPLETED = 2,
 }
+
+-------------------------------------------------------------------------------
+-- Tools to read in uncertainties from file
+
+terra read_header(f : &C.FILE)
+  var x: uint64
+  return C.fscanf(f, "%llu\n", &x)
+end
+
+terra read_line(f : &C.FILE, value : &double)
+  return C.fscanf(f, "%lf\n", &value[0]) == 1
+end
+-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------
 -- Tasks
@@ -139,6 +153,24 @@ task main()
   var color_space_by_level_conv = ispace(int2d,{NUM_LEVELS_CONV,1})
   var p_samples_by_level_conv = partition(equal, samples_conv, color_space_by_level_conv)
 
+  --If reading in uncertainties from file
+  var f : &C.FILE
+  f = C.fopen("uncertainties.txt", "rb")
+  read_header(f)
+  --regentlib.assert(read_header(f) == NUM_U_INPUT, "Input file wrong number of uncertainties.")
+  var uncertainties : double[NUM_U_INPUT]
+  for i=0, NUM_U_INPUT do
+    var value : double[1]
+    regentlib.assert(read_line(f, value), "Less data than expected")
+    uncertainties[i]=value[0]
+  end
+  C.fclose(f)
+  
+  --for i = 0, NUM_U_INPUT do
+  --  C.printf("%f\n", uncertainties[i])
+  --end
+
+
   for lvl = 0, NUM_LEVELS_CONV do
     C.printf('level: %d \n', lvl)
     __fence(__execution, __block)
@@ -153,7 +185,8 @@ task main()
       end
       for j = 0, NUM_UNCERTAINTIES do
         --samples_conv[{lvl,i}].uncertainties[j] = .5
-        samples_conv[{lvl,i}].uncertainties[j] = C.drand48()
+        --samples_conv[{lvl,i}].uncertainties[j] = C.drand48()
+        samples_conv[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
       end
       eval_samples(p_samples_fine_conv[{lvl,i}])
     end
@@ -208,24 +241,24 @@ task main()
   -- Initialize RNG.
   C.srand48(SEED)
   -- Inputs
+  var M = 2 --refinement cost factor
+  gamma = log(M)/log(2) --using expected gamma not approximated one
+  C.printf('expected gamma: %f \n', gamma)
   var NUM_LEVELS = 3
-  var opt_samples : int[NUM_LEVELS] = array(1000,1000,1000)
-  var mesh_sizes : int[NUM_LEVELS] = array(3, 5, 9)
-  var q_costs : double[NUM_LEVELS] = array(1.0,2.0,4.0)
-  var y_costs : double[NUM_LEVELS] =
-    array(q_costs[0],
-          q_costs[1],
-          q_costs[2])
+  var MAX_NUM_LEVELS = 10
+  var opt_samples : int[MAX_NUM_LEVELS] = array(1000,1000,1000,0,0,0,0,0,0,0)
+  var mesh_sizes : int[MAX_NUM_LEVELS] = array(3,5,9,17,33,65,129,257,513,1025)
+  var y_costs : double[MAX_NUM_LEVELS] = array(1.0,2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0,1024.0)
   -- Algorithm state
-  var num_samples : int[NUM_LEVELS] = array(0,0,0)
-  var y_mean : double[NUM_LEVELS] = array(0.0, 0.0, 0.0)
-  var y_var : double[NUM_LEVELS] = array(0.0, 0.0, 0.0)
+  var num_samples : int[MAX_NUM_LEVELS] = array(0,0,0,0,0,0,0,0,0,0)
+  var y_mean : double[MAX_NUM_LEVELS] = array(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+  var y_var : double[MAX_NUM_LEVELS] = array(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
   -- Region of samples
   -- Index space: controls the number of "rows"; in this case each row is
   -- indexed by a pair of integers, the first defining the level and the
   -- second defining the sample index within that level, for a total of
   -- NUM_LEVELS * MAX_SAMPLES_PER_LEVEL rows.
-  var index_space = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL})
+  var index_space = ispace(int2d,{MAX_NUM_LEVELS,MAX_SAMPLES_PER_LEVEL})
   var samples = region(index_space, Sample)
   fill(samples.state, State.INACTIVE)
   -- Split the region of samples into a disjoint set of sub-regions, such that
@@ -234,7 +267,7 @@ task main()
   -- elements, therefore each sub-region will contain a single sample; this is
   -- usually not ideal, because it means we will end up launching many tasks,
   -- each doing very little work.
-  var color_space_fine = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL})
+  var color_space_fine = ispace(int2d,{MAX_NUM_LEVELS,MAX_SAMPLES_PER_LEVEL})
   var p_samples_fine = partition(equal, samples, color_space_fine)
   -- The same region can be partition in multiple ways; when switching from
   -- using one partition to the other, the runtime will automatically check if
@@ -243,11 +276,12 @@ task main()
   -- dimension (the level index) into NUM_LEVELS parts, and doesn't split its
   -- second dimension. Therefore, there will be a total of NUM_LEVELS pieces:
   -- {0,0} {1,0} ... {NUM_LEVELS-1,0}
-  var color_space_by_level = ispace(int2d,{NUM_LEVELS,1})
+  var color_space_by_level = ispace(int2d,{MAX_NUM_LEVELS,1})
   var p_samples_by_level = partition(equal, samples, color_space_by_level)
   -- Main loop
-  var iter = 0
   for iter = 0, MAX_ITERS do
+    C.printf('new iteration \n')
+
     -- Run remaining samples for all levels.
     for lvl = 0, NUM_LEVELS do
       for i = num_samples[lvl], opt_samples[lvl] do
@@ -260,7 +294,9 @@ task main()
         end
         for j = 0, NUM_UNCERTAINTIES do
           --samples[{lvl,i}].uncertainties[j] = .5
-          samples[{lvl,i}].uncertainties[j] = C.drand48()
+          --samples[{lvl,i}].uncertainties[j] = C.drand48()
+          samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
+
         end
         -- Invoke `eval_samples` for a set of samples containing just the
         -- newly created sample. This task will be launched asynchronously; the
@@ -271,12 +307,7 @@ task main()
         -- immediately.
         eval_samples(p_samples_fine[{lvl,i}])
       end
-      C.printf('level: %d \n', lvl)
-      C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
       num_samples[lvl] max= opt_samples[lvl]
-      --C.printf('max: %f', max)
-      C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
-      C.printf('opt_samples[lvl]: %d \n', opt_samples[lvl])
     end
     -- Update estimates for central moments.
     for lvl = 0, NUM_LEVELS do
@@ -287,10 +318,17 @@ task main()
       -- execution of `calc_mean` will have to wait until those tasks have
       -- completed (the main task is free to continue emitting tasks, however).
       y_mean[lvl] = C.fabs(calc_mean(p_samples_by_level[{lvl,0}]))
-      C.printf('num_samples[lvl] %d \n', num_samples[lvl])
       y_var[lvl] = calc_var(p_samples_by_level[{lvl,0}], y_mean[lvl])
       y_var[lvl] max= 0.0 
     end
+
+    --cope with possible zero values for ml and Vl
+    --(can happen when there are few samples, e.g. on the final level added)
+    for lvl = 2, NUM_LEVELS do
+      y_mean[lvl] max= 0.5*y_mean[lvl-1]/pow(2, alpha)
+      y_var[lvl] max= 0.5*y_var[lvl-1]/pow(2, beta)
+    end
+
     -- Update estimates for the optimal number of samples.
     var c = 0.0
     for lvl = 0, NUM_LEVELS do
@@ -308,8 +346,34 @@ task main()
         almost_conv = false
       end
     end
+
+    C.printf('y_mean =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %e', y_mean[lvl])
+    end
+    C.printf('\n')
+
+
+    C.printf('y_var =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %e', y_var[lvl])
+    end
+    C.printf('\n')
+
+    C.printf('y_costs =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %e', y_costs[lvl])
+    end
+    C.printf('\n')
+
+    C.printf('opt_samples =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %d', opt_samples[lvl])
+    end
+    C.printf('\n')
+
     -- dynamically add levels
-    if almost_conv then
+    if ((almost_conv) and (NUM_LEVELS < MAX_NUM_LEVELS)) then
       C.printf('almost converged \n')
       var rem = 0.0
       for i =-2, 1 do
@@ -320,19 +384,13 @@ task main()
         C.printf('add level \n')
         NUM_LEVELS += 1
         y_var[NUM_LEVELS-1] = y_var[NUM_LEVELS-2] / pow(2, beta)
-        num_samples[NUM_LEVELS-1] = 0
-       
-        -- Update estimates for the optimal number of samples.
-        for lvl = 0, NUM_LEVELS do
-          y_costs[lvl] = pow(2, gamma*lvl) 
-        end
 
+        -- Update estimates for the optimal number of samples.
         var c = 0.0
         for lvl = 0, NUM_LEVELS do
           c += sqrt(y_costs[lvl] * y_var[lvl])
         end
         c /= pow(TOLERANCE,2)/2.0
-    
         for lvl = 0, NUM_LEVELS do
           opt_samples[lvl] =
             [int](ceil(c * sqrt(y_var[lvl] / y_costs[lvl])))
@@ -340,32 +398,8 @@ task main()
                            'Please increase MAX_SAMPLES_PER_LEVEL')
         end
       end
-      C.printf('level added \n')
     end
 
-    -- Print output.
-    C.printf('Iteration %d:\n', iter)
-    C.printf('  y_costs =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_costs[lvl])
-    end
-  
-    C.printf('\n')
-    C.printf('  y_mean =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_mean[lvl])
-    end
-    C.printf('\n')
-    C.printf('  y_var =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_var[lvl])
-    end
-    C.printf('\n')
-    C.printf('  Nl =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %d', opt_samples[lvl])
-    end
-    C.printf('\n')
     -- Decide if we have converged.
     var opt_samples_ran = true
     for lvl = 0, NUM_LEVELS do

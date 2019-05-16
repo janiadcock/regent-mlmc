@@ -75,6 +75,8 @@ local fspace Sample {
   mesh_size_l_1 : int;
   uncertainties : double[NUM_UNCERTAINTIES];
   response : double;
+  response_l : double;
+  response_l_1 : double;
 }
 
 -- This task accepts an arbitrary-size collection of samples and computes the
@@ -82,7 +84,7 @@ local fspace Sample {
 local task eval_samples(samples : region(ispace(int2d),Sample))
 where
   reads(samples.{level, mesh_size_l, mesh_size_l_1, uncertainties}),
-  writes(samples.response),
+  writes(samples.response, samples.response_l, samples.response_l_1),
   reads writes(samples.state)
 do
   for s in samples do
@@ -94,9 +96,12 @@ do
         var q_l_1 =
           SIM.diffusion_1d(s.mesh_size_l_1, NUM_UNCERTAINTIES, s.uncertainties)
         s.response = q_l - q_l_1
+        s.response_l = q_l
+        s.response_l_1 = q_l_1
       else
-        s.response =
-          SIM.diffusion_1d(s.mesh_size_l, NUM_UNCERTAINTIES, s.uncertainties)
+        var q_l = SIM.diffusion_1d(s.mesh_size_l, NUM_UNCERTAINTIES, s.uncertainties)
+        s.response = q_l
+        s.response_l = q_l
       end
       s.state = State.COMPLETED
     end
@@ -118,6 +123,21 @@ do
   return acc / count
 end
 
+local task calc_mean_l(samples : region(ispace(int2d),Sample)) : double
+where
+  reads(samples.{state, response_l})
+do
+  var acc = 0.0
+  var count = 0
+  for s in samples do
+    if s.state == State.COMPLETED then
+      acc += s.response_l
+      count += 1
+    end
+  end
+  return acc / count
+end
+
 local task calc_var(samples : region(ispace(int2d),Sample), mean : double) : double
 where
   reads(samples.{state, response})
@@ -131,6 +151,23 @@ do
     end
   end
   return acc/count-pow(mean,2)
+end
+
+local task calc_var_l(samples : region(ispace(int2d),Sample), mean_l : double): double
+where
+  reads(samples.{state, response_l})
+do
+  var acc = 0.0
+  --var acc_2 = 0.0
+  var count = 0
+  for s in samples do
+    if s.state == State.COMPLETED then
+      acc += pow(s.response_l, 2)
+      --acc_2 += pow(s.response_l - mean_l, 2)
+      count += 1
+    end
+  end
+  return acc/count - pow(mean_l, 2)
 end
 
 -- Main
@@ -425,6 +462,38 @@ task main()
   C.printf('MLMC mean: %e\n', ml_mean)
   C.printf('MLMC stddev: %e\n', sqrt(ml_var))
   C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)
+
+  -- Comparison to MC on finest level w/ same computational cost
+  var total_C = 0.0
+  for lvl = 0, NUM_LEVELS do
+    total_C += num_samples[lvl]* y_costs[lvl]
+  end
+  
+  var lvl = NUM_LEVELS-1
+  --var N_L = floor(total_C/y_costs[lvl])
+  var N_L = (int) (total_C/y_costs[lvl])
+  C.printf('NUM_LEVELS-1 %d \n', lvl)
+  C.printf('total_C %e \n', total_C)
+  C.printf('y_costs[lvl] %e \n', y_costs[lvl])
+  C.printf('num_samples[NUM_LEVELS-1] %d \n', num_samples[lvl])
+  C.printf('N_L %d \n', N_L)
+  
+  for i = num_samples[NUM_LEVELS-1], N_L do
+    --Fill in details for additional samples needed for MC
+    samples[{lvl,i}].state = State.ACTIVE
+    samples[{lvl,i}].level = lvl
+    samples[{lvl,i}].mesh_size_l = mesh_sizes[lvl]
+    samples[{lvl,i}].mesh_size_l_1 = mesh_sizes[lvl-1]
+    for j=0,NUM_UNCERTAINTIES do
+      samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
+    end
+    eval_samples(p_samples_fine[{lvl,i}])
+  end
+  
+  var mean_L = C.fabs(calc_mean_l(p_samples_by_level[{lvl,0}]))
+  var var_L = calc_var_l(p_samples_by_level[{lvl, 0}], mean_L)
+  C.printf('MC mean: %e\n', mean_L)
+  C.printf('MC stddev: %e\n', sqrt(var_L))
 end
 
 regentlib.start(main)

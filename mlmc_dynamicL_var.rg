@@ -77,6 +77,7 @@ local fspace Sample {
   response_l : double;
   response_l_1 : double;
   response : double;
+  response_MC : double; 
 }
 
 -- This task accepts an arbitrary-size collection of samples and computes the
@@ -112,10 +113,12 @@ where
   writes(samples.response)
 do
   for s in samples do
-    if s.level > 0 then
-      s.response = pow(s.response_l - q_l_mean, 2) - pow(s.response_l_1 - q_l_1_mean, 2)
-    else
-      s.response = pow(s.response_l - q_l_mean, 2)
+    if s.state == State.COMPLETED then
+      if s.level > 0 then
+        s.response = pow(s.response_l - q_l_mean, 2) - pow(s.response_l_1 - q_l_1_mean, 2)
+      else
+        s.response = pow(s.response_l - q_l_mean, 2)
+      end
     end
   end
 end
@@ -195,6 +198,50 @@ do
     end
   end
   return acc/count-pow(mean,2)
+end
+
+local task calc_response_MC(samples : region(ispace(int2d), Sample), q_l_mean : double)
+where
+  reads(samples.{state, level, response_l}),
+  writes(samples.response_MC)
+do
+  for s in samples do
+    if s.state == State.COMPLETED then
+      s.response_MC = pow(s.response_l - q_l_mean, 2)
+    end
+  end
+end
+
+local task calc_mean_MC(samples : region(ispace(int2d),Sample)) : double
+where
+  reads(samples.{state, response_MC})
+do
+  var acc = 0.0
+  var count = 0
+  for s in samples do
+    if s.state == State.COMPLETED then
+      acc += s.response_MC
+      count += 1
+    end
+  end
+  return acc / count
+end
+
+local task calc_var_MC(samples : region(ispace(int2d),Sample), mean_MC : double): double
+where
+  reads(samples.{state, response_MC})
+do
+  var acc = 0.0
+  --var acc_2 = 0.0
+  var count = 0
+  for s in samples do
+    if s.state == State.COMPLETED then
+      acc += pow(s.response_MC, 2)
+      --acc_2 += pow(s.response_MC - mean_MC, 2)
+      count += 1
+    end
+  end
+  return acc/count - pow(mean_MC, 2)
 end
 
 -- Main
@@ -350,7 +397,7 @@ task main()
   C.printf('expected gamma: %f \n', gamma)
   var NUM_LEVELS = 3
   var MAX_NUM_LEVELS = 10
-  var opt_samples : int[MAX_NUM_LEVELS] = array(1000,1000,1000,0,0,0,0,0,0,0)
+  var opt_samples : int[MAX_NUM_LEVELS] = array(10,10,10,0,0,0,0,0,0,0)
   var mesh_sizes : int[MAX_NUM_LEVELS] = array(3,5,9,17,33,65,129,257,513,1025)
   var y_costs : double[MAX_NUM_LEVELS] = array(1.0,2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0,1024.0)
   -- Algorithm state
@@ -542,6 +589,41 @@ task main()
   C.printf('MLMC mean: %e\n', ml_mean)
   C.printf('MLMC stddev: %e\n', sqrt(ml_var))
   C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)
-end
 
+  -- Comparison to MC on finest level w/ same computational cost
+  var total_C = 0.0
+  for lvl = 0, NUM_LEVELS do
+    total_C += num_samples[lvl]* y_costs[lvl]
+  end
+  
+  var lvl = NUM_LEVELS-1
+  --var N_L = floor(total_C/y_costs[lvl])
+  var N_L = (int) (total_C/y_costs[lvl])
+  C.printf('MLMC total cost %e \n', total_C)
+  C.printf('MC number of samples %d \n', N_L)
+
+  if N_L > MAX_SAMPLES_PER_LEVEL then
+    C.printf('number of samples for MC exceeds MAX_SAMPLES_PER_LEVEL, results shown for MC with MAX_SAMPLES_PER_LEVEL\n')
+    N_L = MAX_SAMPLES_PER_LEVEL
+  end
+
+  for i = num_samples[NUM_LEVELS-1], N_L do
+    --Fill in details for additional samples needed for MC
+    samples[{lvl,i}].state = State.ACTIVE
+    samples[{lvl,i}].level = lvl
+    samples[{lvl,i}].mesh_size_l = mesh_sizes[lvl]
+    samples[{lvl,i}].mesh_size_l_1 = mesh_sizes[lvl-1]
+    for j=0,NUM_UNCERTAINTIES do
+      samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
+    end
+    eval_samples(p_samples_fine[{lvl,i}])
+  end
+  var q_l_mean = C.fabs(calc_mean_l(p_samples_by_level[{lvl,0}]))
+  calc_response_MC(p_samples_by_level[{lvl,0}], q_l_mean)
+  var mean_MC_L = C.fabs(calc_mean_MC(p_samples_by_level[{lvl,0}]))
+  var var_MC_L = calc_var_MC(p_samples_by_level[{lvl, 0}], mean_MC_L)
+  C.printf('MC mean: %e\n', mean_MC_L)
+  C.printf('MC stddev: %e\n', sqrt(var_MC_L))
+
+end
 regentlib.start(main)

@@ -284,7 +284,7 @@ task main()
   C.printf('expected gamma: %f \n', gamma)
   var NUM_LEVELS = 3
   var MAX_NUM_LEVELS = 10
-  var opt_samples : int[MAX_NUM_LEVELS] = array(1000,1000,1000,0,0,0,0,0,0,0)
+  var opt_samples : int[MAX_NUM_LEVELS] = array(10,10,10,0,0,0,0,0,0,0)
   var mesh_sizes : int[MAX_NUM_LEVELS] = array(3,5,9,17,33,65,129,257,513,1025)
   var y_costs : double[MAX_NUM_LEVELS] = array(1.0,2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0,1024.0)
   -- Algorithm state

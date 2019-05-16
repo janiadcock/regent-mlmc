@@ -198,6 +198,7 @@ task main()
     y_mean_conv[lvl] = C.fabs(calc_mean(p_samples_by_level_conv[{lvl,0}]))
     --var N_samples_conv = NUM_SAMPLES_CONV 
     y_var_conv[lvl] = calc_var(p_samples_by_level_conv[{lvl,0}], y_mean_conv[lvl])
+    C.printf('lvl= %d, y_var_conv[lvl]= %e \n', lvl, y_var_conv[lvl])
   end
 
   --should change into C function

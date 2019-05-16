@@ -150,6 +150,22 @@ do
   return acc / count
 end
 
+local task calc_mean_l_sq(samples: region(ispace(int2d), Sample)): double
+where 
+  reads(samples.{state, response_l})
+do
+  var acc = 0.0
+  var count = 0
+  for s in samples do
+    if s.state == State.COMPLETED then
+      acc += pow(s.response_l, 2)
+      count += 1
+    end
+  end
+  return acc / count
+end
+
+
 local task calc_mean_l_1(samples : region(ispace(int2d),Sample)) : double
 where
   reads(samples.{state, response_l_1})
@@ -244,6 +260,8 @@ task main()
   end
   for lvl = 0, NUM_LEVELS_CONV do
     var q_l_mean = C.fabs(calc_mean_l(p_samples_by_level_conv[{lvl,0}]))
+    var q_l_mean_sq = C.fabs(calc_mean_l_sq(p_samples_by_level_conv[{lvl,0}]))
+    C.printf('lvl= %d, mean= %e, mean sq= %e \n', lvl, q_l_mean, q_l_mean_sq)
     var q_l_1_mean = 0.0
     if lvl > 0 then
       q_l_1_mean = C.fabs(calc_mean_l_1(p_samples_by_level_conv[{lvl,0}]))

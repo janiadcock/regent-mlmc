@@ -491,11 +491,18 @@ task main()
     var c = 0.0
     for lvl = 0, NUM_LEVELS do
       c += sqrt(y_costs[lvl] * y_var[lvl])
+      C.printf('debug y_costs[lvl] %e \n', y_costs[lvl])
+      C.printf('debu y_var[lvl] %e \n', y_var[lvl])
     end
+    C.printf('debug c pre divide %e \n', c)
     c /= pow(TOLERANCE,2)/2.0
+    C.printf('debug TOLERANCE %e \n', TOLERANCE)
  
     var almost_conv = true
     for lvl = 0, NUM_LEVELS do
+      C.printf('debug c: \n', c)
+      C.printf('debug sqrt(y_var[lvl]): %e \n', sqrt(y_var[lvl]))
+      C.printf('debug y_costs[lvl]: %e \n', y_costs[lvl])
       opt_samples[lvl] =
         [int](ceil(c * sqrt(y_var[lvl] / y_costs[lvl])))
       if opt_samples[lvl] >= MAX_SAMPLES_PER_LEVEL then

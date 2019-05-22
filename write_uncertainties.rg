@@ -7,8 +7,8 @@ local C = terralib.includecstring[[
 ]]
 
 task toplevel()
-  var out_file = C.fopen("uncertainties.txt", "w")
-  var N = 9000
+  var out_file = C.fopen("uncertainties_large.txt", "w")
+  var N = 100000
   C.fprintf(out_file, "%d\n",N)
   for i = 0,N do
     var u = C.drand48()

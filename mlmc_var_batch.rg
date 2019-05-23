@@ -36,6 +36,7 @@ local NUM_UNCERTAINTIES = 1
 local SEED = 1237
 local MAX_SAMPLES_PER_LEVEL = 1000
 local MAX_ITERS = 10
+local TOLERANCE = 0.000005
 
 local NUM_U_INPUT = 100000
 
@@ -105,7 +106,7 @@ do
   end
 end
 
-local task calc_response(samples : region(ispace(int2d), Sample))
+local task calc_response(samples : region(ispace(int2d), Sample), q_l_mean : double, q_l_1_mean : double)
 where
   reads(samples.{state, level, response_l, response_l_1}),
   writes(samples.response)
@@ -113,14 +114,13 @@ do
   for s in samples do
     if s.state == State.COMPLETED then
       if s.level > 0 then
-        s.response = s.response_l - s.response_l_1
+        s.response = pow(s.response_l - q_l_mean, 2) - pow(s.response_l_1 - q_l_1_mean, 2)
       else
-        s.response = s.response_l
+        s.response = pow(s.response_l - q_l_mean, 2)
       end
     end
   end
 end
-
 
 local task calc_mean(samples : region(ispace(int2d),Sample)) : double
 where
@@ -152,6 +152,37 @@ do
   return acc / count
 end
 
+local task calc_mean_l_sq(samples: region(ispace(int2d), Sample)): double
+where 
+  reads(samples.{state, response_l})
+do
+  var acc = 0.0
+  var count = 0
+  for s in samples do
+    if s.state == State.COMPLETED then
+      acc += pow(s.response_l, 2)
+      count += 1
+    end
+  end
+  return acc / count
+end
+
+
+local task calc_mean_l_1(samples : region(ispace(int2d),Sample)) : double
+where
+  reads(samples.{state, response_l_1})
+do
+  var acc = 0.0
+  var count = 0
+  for s in samples do
+    if s.state == State.COMPLETED then
+      acc += s.response_l_1
+      count += 1
+    end
+  end
+  return acc / count
+end
+
 
 local task calc_var(samples : region(ispace(int2d),Sample), mean : double) : double
 where
@@ -168,29 +199,58 @@ do
   return acc/count-pow(mean,2)
 end
 
-local task calc_var_l(samples : region(ispace(int2d),Sample), mean_l : double): double
+local task calc_response_MC(samples : region(ispace(int2d), Sample), q_l_mean : double)
 where
-  reads(samples.{state, response_l})
+  reads(samples.{state, level, response_l}),
+  writes(samples.response_MC)
+do
+  for s in samples do
+    if s.state == State.COMPLETED then
+      s.response_MC = pow(s.response_l - q_l_mean, 2)
+    end
+  end
+end
+
+local task calc_mean_MC(samples : region(ispace(int2d),Sample)) : double
+where
+  reads(samples.{state, response_MC})
+do
+  var acc = 0.0
+  var count = 0
+  for s in samples do
+    if s.state == State.COMPLETED then
+      acc += s.response_MC
+      count += 1
+    end
+  end
+  return acc / count
+end
+
+local task calc_var_MC(samples : region(ispace(int2d),Sample), mean_MC : double): double
+where
+  reads(samples.{state, response_MC})
 do
   var acc = 0.0
   --var acc_2 = 0.0
   var count = 0
   for s in samples do
     if s.state == State.COMPLETED then
-      acc += pow(s.response_l, 2)
-      --acc_2 += pow(s.response_l - mean_l, 2)
+      acc += pow(s.response_MC, 2)
+      --acc_2 += pow(s.response_MC - mean_MC, 2)
       count += 1
     end
   end
-  return acc/count - pow(mean_l, 2)
+  return acc/count - pow(mean_MC, 2)
 end
-
 
 -- Main
 -------------------------------------------------------------------------------
 
 task main()
   -----
+  --Calculate alpha, beta, gamma needed for dynamic levels
+  C.srand48(SEED)
+
   --If reading in uncertainties from file
   var f : &C.FILE
   f = C.fopen("uncertainties_large.txt", "rb")
@@ -272,6 +332,9 @@ task main()
     opt_samples[0] = 182
     opt_samples[1] = 55
     opt_samples[2] = 10
+    for i = 3, MAX_NUM_LEVELS do
+      opt_samples[i] = 0   
+    end
     for i = 0, MAX_NUM_LEVELS do
       num_samples[i] = 0
       y_mean[i] = 0.0
@@ -280,7 +343,7 @@ task main()
     fill(samples.state, State.INACTIVE)
     NUM_LEVELS = 3
 
-    -- Main computation
+    -- Main loop
     -- Run remaining samples for all levels.
     for lvl = 0, NUM_LEVELS do
       for i = num_samples[lvl], opt_samples[lvl] do
@@ -316,11 +379,16 @@ task main()
       -- calls to `eval_samples` for samples on the same level. Therefore, the
       -- execution of `calc_mean` will have to wait until those tasks have
       -- completed (the main task is free to continue emitting tasks, however).
-      calc_response(p_samples_by_level[{lvl,0}])
+      var q_l_mean = C.fabs(calc_mean_l(p_samples_by_level[{lvl,0}]))
+      var q_l_1_mean = 0.0
+      if lvl > 0 then
+        q_l_1_mean = C.fabs(calc_mean_l_1(p_samples_by_level[{lvl,0}]))
+      end
+      calc_response(p_samples_by_level[{lvl,0}], q_l_mean, q_l_1_mean)
       
       y_mean[lvl] = C.fabs(calc_mean(p_samples_by_level[{lvl,0}]))
       y_var[lvl] = calc_var(p_samples_by_level[{lvl,0}], y_mean[lvl])
-      y_var[lvl] max= 0.0
+      y_var[lvl] max= 0.0 
     end
   
     --cope with possible zero values for ml and Vl
@@ -329,19 +397,18 @@ task main()
       y_mean[lvl] max= 0.5*y_mean[lvl-1]/pow(2, alpha)
       y_var[lvl] max= 0.5*y_var[lvl-1]/pow(2, beta)
     end
-   
+    
     -- Compute MLMC estimator mean & variance.
-    --var ml_mean = 0.0
-    --for lvl = 0, NUM_LEVELS do
-    --  ml_mean += y_mean[lvl]
-    --end
+    var ml_mean = 0.0
+    for lvl = 0, NUM_LEVELS do
+      ml_mean += y_mean[lvl]
+    end
     var ml_var = 0.0
     for lvl = 0, NUM_LEVELS do
-      C.printf('lvl: %d, y_var[lvl]: %e, num_samples[lvl]: %d \n', lvl, y_var[lvl], num_samples[lvl])
       ml_var += y_var[lvl] / num_samples[lvl]
     end
-    --C.printf('MLMC mean: %e\n', ml_mean)
-    C.printf('MLMC variance: %e\n', ml_var)
+    C.printf('MLMC mean: %e\n', ml_mean)
+    C.printf('MLMC stddev: %e\n', sqrt(ml_var))
     --C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)
   
     -- Comparison to MC on finest level w/ same computational cost
@@ -353,6 +420,7 @@ task main()
     var lvl = NUM_LEVELS-1
     --var N_L = floor(total_C/y_costs[lvl])
     var N_L = (int) (total_C/y_costs[lvl])
+    C.printf('MLMC total cost %e \n', total_C)
     C.printf('MC number of samples %d \n', N_L)
   
     if N_L > MAX_SAMPLES_PER_LEVEL then
@@ -372,12 +440,30 @@ task main()
       end
       eval_samples(p_samples_fine[{lvl,i}])
     end
-    var mean_MC_L = C.fabs(calc_mean_l(p_samples_by_level[{lvl,0}]))
-    var var_MC_L = calc_var_l(p_samples_by_level[{lvl, 0}], mean_MC_L)
-    --C.printf('MC mean: %e\n', mean_MC_L)
-    C.printf('MC variance: %e\n', var_MC_L)
-    var_MLMC_replicates[k] = ml_var
-    var_MC_replicates[k] = var_MC_L
+    var q_l_mean = C.fabs(calc_mean_l(p_samples_by_level[{lvl,0}]))
+    calc_response_MC(p_samples_by_level[{lvl,0}], q_l_mean)
+    var mean_MC_L = C.fabs(calc_mean_MC(p_samples_by_level[{lvl,0}]))
+    var var_MC_L = calc_var_MC(p_samples_by_level[{lvl, 0}], mean_MC_L)
+    C.printf('MC mean: %e\n', mean_MC_L)
+    C.printf('MC stddev: %e\n', sqrt(var_MC_L))
+    var_MLMC_replicates[k] = ml_mean
+    var_MC_replicates[k] = mean_MC_L
+
+
+    C.printf('opt_samples =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %d', opt_samples[lvl])
+    end
+    C.printf('\n')
+
+
+    C.printf('num_samples =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %d', num_samples[lvl])
+    end
+    C.printf('\n')
+
+    C.printf('\n')
   end
 
   var acc_MLMC = 0.0

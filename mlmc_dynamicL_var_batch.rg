@@ -40,8 +40,9 @@ local TOLERANCE = 0.000005
 
 local NUM_SAMPLES_CONV = 1000 
 local NUM_LEVELS_CONV = 9
-local NUM_U_INPUT = 9000
+local NUM_U_INPUT = 100000
 
+local NUM_REPLICATES = 10
 -- Enumeration of states that a sample can be in.
 local State = {
   INACTIVE = 0,
@@ -266,7 +267,7 @@ task main()
 
   --If reading in uncertainties from file
   var f : &C.FILE
-  f = C.fopen("uncertainties.txt", "rb")
+  f = C.fopen("uncertainties_large.txt", "rb")
   read_header(f)
   --regentlib.assert(read_header(f) == NUM_U_INPUT, "Input file wrong number of uncertainties.")
   var uncertainties : double[NUM_U_INPUT]
@@ -400,6 +401,9 @@ task main()
   var opt_samples : int[MAX_NUM_LEVELS] = array(10,10,10,0,0,0,0,0,0,0)
   var mesh_sizes : int[MAX_NUM_LEVELS] = array(3,5,9,17,33,65,129,257,513,1025)
   var y_costs : double[MAX_NUM_LEVELS] = array(1.0,2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0,1024.0)
+
+
+
   -- Algorithm state
   var num_samples : int[MAX_NUM_LEVELS] = array(0,0,0,0,0,0,0,0,0,0)
   var y_mean : double[MAX_NUM_LEVELS] = array(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
@@ -429,114 +433,229 @@ task main()
   -- {0,0} {1,0} ... {NUM_LEVELS-1,0}
   var color_space_by_level = ispace(int2d,{MAX_NUM_LEVELS,1})
   var p_samples_by_level = partition(equal, samples, color_space_by_level)
-  -- Main loop
-  for iter = 0, MAX_ITERS do
-    C.printf('new iteration \n')
 
-    -- Run remaining samples for all levels.
-    for lvl = 0, NUM_LEVELS do
-      for i = num_samples[lvl], opt_samples[lvl] do
-        -- Fill in the details for an additional sample.
-        samples[{lvl,i}].state = State.ACTIVE
-        samples[{lvl,i}].level = lvl
-        samples[{lvl,i}].mesh_size_l = mesh_sizes[lvl]
+
+  --Replicates loop
+  var var_MLMC_replicates : double[NUM_REPLICATES]
+  var var_MC_replicates : double[NUM_REPLICATES]
+  var uncertainty_i = 0
+  for k = 0, NUM_REPLICATES do
+    C.printf('replicate: %d \n', k)
+    --C.printf('num uncertanties used: %d \n', uncertainty_i)
+    --reset samples
+    for i = 0, 3 do
+      opt_samples[i] = 10
+    end
+    for i = 3, MAX_NUM_LEVELS do
+      opt_samples[i] = 0   
+    end
+    for i = 0, MAX_NUM_LEVELS do
+      num_samples[i] = 0
+      y_mean[i] = 0.0
+      y_var[i] = 0.0
+    end
+    fill(samples.state, State.INACTIVE)
+    NUM_LEVELS = 3
+
+    -- Main loop
+    for iter = 0, MAX_ITERS do
+      --C.printf('new iteration \n')
+  
+      -- Run remaining samples for all levels.
+      for lvl = 0, NUM_LEVELS do
+        for i = num_samples[lvl], opt_samples[lvl] do
+          -- Fill in the details for an additional sample.
+          samples[{lvl,i}].state = State.ACTIVE
+          samples[{lvl,i}].level = lvl
+          samples[{lvl,i}].mesh_size_l = mesh_sizes[lvl]
+          if lvl > 0 then
+            samples[{lvl,i}].mesh_size_l_1 = mesh_sizes[lvl-1]
+          end
+          for j = 0, NUM_UNCERTAINTIES do
+            --samples[{lvl,i}].uncertainties[j] = .5
+            --samples[{lvl,i}].uncertainties[j] = C.drand48()
+            samples[{lvl,i}].uncertainties[j] = uncertainties[uncertainty_i] --not set up for NUM_UNCERTAINTIES > 0 yet
+            uncertainty_i += 1
+          end
+          -- Invoke `eval_samples` for a set of samples containing just the
+          -- newly created sample. This task will be launched asynchronously; the
+          -- main task will continue running and launching new tasks. The runtime
+          -- will analyze the dependencies between the newly launched task and
+          -- all tasks launched before it. It will conclude that the new task is
+          -- independent from all the others, and thus can be queued to run
+          -- immediately.
+          eval_samples(p_samples_fine[{lvl,i}])
+        end
+        num_samples[lvl] max= opt_samples[lvl]
+      end
+      -- Update estimates for central moments.
+      for lvl = 0, NUM_LEVELS do
+        -- At this point we switch to using the partition by level; the runtime
+        -- will analyze the dependencies and conclude that the call to
+        -- `calc_mean` has a read-after-write dependency with all the preceding
+        -- calls to `eval_samples` for samples on the same level. Therefore, the
+        -- execution of `calc_mean` will have to wait until those tasks have
+        -- completed (the main task is free to continue emitting tasks, however).
+        var q_l_mean = C.fabs(calc_mean_l(p_samples_by_level[{lvl,0}]))
+        var q_l_1_mean = 0.0
         if lvl > 0 then
-          samples[{lvl,i}].mesh_size_l_1 = mesh_sizes[lvl-1]
+          q_l_1_mean = C.fabs(calc_mean_l_1(p_samples_by_level[{lvl,0}]))
         end
-        for j = 0, NUM_UNCERTAINTIES do
-          --samples[{lvl,i}].uncertainties[j] = .5
-          --samples[{lvl,i}].uncertainties[j] = C.drand48()
-          samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
-
+        calc_response(p_samples_by_level[{lvl,0}], q_l_mean, q_l_1_mean)
+        
+        y_mean[lvl] = C.fabs(calc_mean(p_samples_by_level[{lvl,0}]))
+        y_var[lvl] = calc_var(p_samples_by_level[{lvl,0}], y_mean[lvl])
+        y_var[lvl] max= 0.0 
+      end
+  
+      --cope with possible zero values for ml and Vl
+      --(can happen when there are few samples, e.g. on the final level added)
+      for lvl = 2, NUM_LEVELS do
+        y_mean[lvl] max= 0.5*y_mean[lvl-1]/pow(2, alpha)
+        y_var[lvl] max= 0.5*y_var[lvl-1]/pow(2, beta)
+      end
+  
+      -- Update estimates for the optimal number of samples.
+      var c = 0.0
+      for lvl = 0, NUM_LEVELS do
+        c += sqrt(y_costs[lvl] * y_var[lvl])
+      end
+      c /= pow(TOLERANCE,2)/2.0
+   
+      var almost_conv = true
+      for lvl = 0, NUM_LEVELS do
+        opt_samples[lvl] =
+          [int](ceil(c * sqrt(y_var[lvl] / y_costs[lvl])))
+        if opt_samples[lvl] >= MAX_SAMPLES_PER_LEVEL then
+          C.printf('opt_samples exceeds MAX_SAMPLES_PER_LEVEL on level %d, opt_samples =\n', lvl)
+          for lvl = 0, NUM_LEVELS do
+            C.printf('%d ', opt_samples[lvl])
+          end
+          C.printf('\n')
         end
-        -- Invoke `eval_samples` for a set of samples containing just the
-        -- newly created sample. This task will be launched asynchronously; the
-        -- main task will continue running and launching new tasks. The runtime
-        -- will analyze the dependencies between the newly launched task and
-        -- all tasks launched before it. It will conclude that the new task is
-        -- independent from all the others, and thus can be queued to run
-        -- immediately.
-        eval_samples(p_samples_fine[{lvl,i}])
-      end
-      num_samples[lvl] max= opt_samples[lvl]
-    end
-    -- Update estimates for central moments.
-    for lvl = 0, NUM_LEVELS do
-      -- At this point we switch to using the partition by level; the runtime
-      -- will analyze the dependencies and conclude that the call to
-      -- `calc_mean` has a read-after-write dependency with all the preceding
-      -- calls to `eval_samples` for samples on the same level. Therefore, the
-      -- execution of `calc_mean` will have to wait until those tasks have
-      -- completed (the main task is free to continue emitting tasks, however).
-      var q_l_mean = C.fabs(calc_mean_l(p_samples_by_level[{lvl,0}]))
-      var q_l_1_mean = 0.0
-      if lvl > 0 then
-        q_l_1_mean = C.fabs(calc_mean_l_1(p_samples_by_level[{lvl,0}]))
-      end
-      calc_response(p_samples_by_level[{lvl,0}], q_l_mean, q_l_1_mean)
-      
-      y_mean[lvl] = C.fabs(calc_mean(p_samples_by_level[{lvl,0}]))
-      y_var[lvl] = calc_var(p_samples_by_level[{lvl,0}], y_mean[lvl])
-      y_var[lvl] max= 0.0 
-    end
-
-    --cope with possible zero values for ml and Vl
-    --(can happen when there are few samples, e.g. on the final level added)
-    for lvl = 2, NUM_LEVELS do
-      y_mean[lvl] max= 0.5*y_mean[lvl-1]/pow(2, alpha)
-      y_var[lvl] max= 0.5*y_var[lvl-1]/pow(2, beta)
-    end
-
-    -- Update estimates for the optimal number of samples.
-    var c = 0.0
-    for lvl = 0, NUM_LEVELS do
-      c += sqrt(y_costs[lvl] * y_var[lvl])
-      C.printf('debug y_costs[lvl] %e \n', y_costs[lvl])
-      C.printf('debu y_var[lvl] %e \n', y_var[lvl])
-    end
-    C.printf('debug c pre divide %e \n', c)
-    c /= pow(TOLERANCE,2)/2.0
-    C.printf('debug TOLERANCE %e \n', TOLERANCE)
- 
-    var almost_conv = true
-    for lvl = 0, NUM_LEVELS do
-      C.printf('debug c: \n', c)
-      C.printf('debug sqrt(y_var[lvl]): %e \n', sqrt(y_var[lvl]))
-      C.printf('debug y_costs[lvl]: %e \n', y_costs[lvl])
-      opt_samples[lvl] =
-        [int](ceil(c * sqrt(y_var[lvl] / y_costs[lvl])))
-      if opt_samples[lvl] >= MAX_SAMPLES_PER_LEVEL then
-        C.printf('opt_samples exceeds MAX_SAMPLES_PER_LEVEL on level %d, opt_samples =\n', lvl)
-        for lvl = 0, NUM_LEVELS do
-          C.printf('%d ', opt_samples[lvl])
+        regentlib.assert(opt_samples[lvl] < MAX_SAMPLES_PER_LEVEL,
+                         'Please increase MAX_SAMPLES_PER_LEVEL')
+        if (opt_samples[lvl] - num_samples[lvl]) > 0.01*num_samples[lvl] then
+          almost_conv = false
         end
-        C.printf('\n')
       end
-      regentlib.assert(opt_samples[lvl] < MAX_SAMPLES_PER_LEVEL,
-                       'Please increase MAX_SAMPLES_PER_LEVEL')
-      if (opt_samples[lvl] - num_samples[lvl]) > 0.01*num_samples[lvl] then
-        almost_conv = false
+  
+      --C.printf('y_mean =')
+      --for lvl = 0, NUM_LEVELS do
+      --  --C.printf(' %e', y_mean[lvl])
+      --end
+      --C.printf('\n')
+  
+  
+      --C.printf('y_var =')
+      --for lvl = 0, NUM_LEVELS do
+      --  C.printf(' %e', y_var[lvl])
+      --end
+      --C.printf('\n')
+  
+      --C.printf('y_costs =')
+      --for lvl = 0, NUM_LEVELS do
+      --  C.printf(' %e', y_costs[lvl])
+      --end
+      --C.printf('\n')
+  
+      --C.printf('opt_samples =')
+      --for lvl = 0, NUM_LEVELS do
+      --  C.printf(' %d', opt_samples[lvl])
+      --end
+      --C.printf('\n')
+  
+      -- dynamically add levels
+      if ((almost_conv) and (NUM_LEVELS < MAX_NUM_LEVELS)) then
+        --C.printf('almost converged \n')
+        var rem = 0.0
+        for i =-2, 1 do
+          var lvl = NUM_LEVELS + i -1
+          rem max= y_mean[lvl]*pow(2,alpha*i)/(pow(2,alpha)-1)
+        end
+        if rem > TOLERANCE/sqrt(2) then
+          --C.printf('add level \n')
+          NUM_LEVELS += 1
+          y_var[NUM_LEVELS-1] = y_var[NUM_LEVELS-2] / pow(2, beta)
+  
+          -- Update estimates for the optimal number of samples.
+          var c = 0.0
+          for lvl = 0, NUM_LEVELS do
+            c += sqrt(y_costs[lvl] * y_var[lvl])
+          end
+          c /= pow(TOLERANCE,2)/2.0
+          for lvl = 0, NUM_LEVELS do
+            opt_samples[lvl] =
+              [int](ceil(c * sqrt(y_var[lvl] / y_costs[lvl])))
+            regentlib.assert(opt_samples[lvl] < MAX_SAMPLES_PER_LEVEL,
+                             'Please increase MAX_SAMPLES_PER_LEVEL')
+          end
+        end
+      end
+  
+      -- Decide if we have converged.
+      var opt_samples_ran = true
+      for lvl = 0, NUM_LEVELS do
+        if opt_samples[lvl] > num_samples[lvl] then
+          opt_samples_ran = false
+          break
+        end
+      end
+      if opt_samples_ran then
+        break
       end
     end
-
-    C.printf('y_mean =')
+    -- Compute MLMC estimator mean & variance.
+    var ml_mean = 0.0
     for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_mean[lvl])
+      ml_mean += y_mean[lvl]
     end
-    C.printf('\n')
-
-
-    C.printf('y_var =')
+    var ml_var = 0.0
     for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_var[lvl])
+      ml_var += y_var[lvl] / num_samples[lvl]
     end
-    C.printf('\n')
-
-    C.printf('y_costs =')
+    C.printf('MLMC mean: %e\n', ml_mean)
+    C.printf('MLMC stddev: %e\n', sqrt(ml_var))
+    --C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)
+  
+    -- Comparison to MC on finest level w/ same computational cost
+    var total_C = 0.0
     for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_costs[lvl])
+      total_C += num_samples[lvl]* y_costs[lvl]
     end
-    C.printf('\n')
+    
+    var lvl = NUM_LEVELS-1
+    --var N_L = floor(total_C/y_costs[lvl])
+    var N_L = (int) (total_C/y_costs[lvl])
+    C.printf('MLMC total cost %e \n', total_C)
+    C.printf('MC number of samples %d \n', N_L)
+  
+    if N_L > MAX_SAMPLES_PER_LEVEL then
+      C.printf('number of samples for MC exceeds MAX_SAMPLES_PER_LEVEL, results shown for MC with MAX_SAMPLES_PER_LEVEL\n')
+      N_L = MAX_SAMPLES_PER_LEVEL
+    end
+  
+    for i = num_samples[NUM_LEVELS-1], N_L do
+      --Fill in details for additional samples needed for MC
+      samples[{lvl,i}].state = State.ACTIVE
+      samples[{lvl,i}].level = lvl
+      samples[{lvl,i}].mesh_size_l = mesh_sizes[lvl]
+      samples[{lvl,i}].mesh_size_l_1 = mesh_sizes[lvl-1]
+      for j=0,NUM_UNCERTAINTIES do
+        samples[{lvl,i}].uncertainties[j] = uncertainties[uncertainty_i] --not set up for NUM_UNCERTAINTIES > 0 yet
+        uncertainty_i += 1
+      end
+      eval_samples(p_samples_fine[{lvl,i}])
+    end
+    var q_l_mean = C.fabs(calc_mean_l(p_samples_by_level[{lvl,0}]))
+    calc_response_MC(p_samples_by_level[{lvl,0}], q_l_mean)
+    var mean_MC_L = C.fabs(calc_mean_MC(p_samples_by_level[{lvl,0}]))
+    var var_MC_L = calc_var_MC(p_samples_by_level[{lvl, 0}], mean_MC_L)
+    C.printf('MC mean: %e\n', mean_MC_L)
+    C.printf('MC stddev: %e\n', sqrt(var_MC_L))
+    var_MLMC_replicates[k] = ml_mean
+    var_MC_replicates[k] = mean_MC_L
+
 
     C.printf('opt_samples =')
     for lvl = 0, NUM_LEVELS do
@@ -544,93 +663,50 @@ task main()
     end
     C.printf('\n')
 
-    -- dynamically add levels
-    if ((almost_conv) and (NUM_LEVELS < MAX_NUM_LEVELS)) then
-      C.printf('almost converged \n')
-      var rem = 0.0
-      for i =-2, 1 do
-        var lvl = NUM_LEVELS + i -1
-        rem max= y_mean[lvl]*pow(2,alpha*i)/(pow(2,alpha)-1)
-      end
-      if rem > TOLERANCE/sqrt(2) then
-        C.printf('add level \n')
-        NUM_LEVELS += 1
-        y_var[NUM_LEVELS-1] = y_var[NUM_LEVELS-2] / pow(2, beta)
 
-        -- Update estimates for the optimal number of samples.
-        var c = 0.0
-        for lvl = 0, NUM_LEVELS do
-          c += sqrt(y_costs[lvl] * y_var[lvl])
-        end
-        c /= pow(TOLERANCE,2)/2.0
-        for lvl = 0, NUM_LEVELS do
-          opt_samples[lvl] =
-            [int](ceil(c * sqrt(y_var[lvl] / y_costs[lvl])))
-          regentlib.assert(opt_samples[lvl] < MAX_SAMPLES_PER_LEVEL,
-                           'Please increase MAX_SAMPLES_PER_LEVEL')
-        end
-      end
-    end
-
-    -- Decide if we have converged.
-    var opt_samples_ran = true
+    C.printf('num_samples =')
     for lvl = 0, NUM_LEVELS do
-      if opt_samples[lvl] > num_samples[lvl] then
-        opt_samples_ran = false
-        break
-      end
+      C.printf(' %d', num_samples[lvl])
     end
-    if opt_samples_ran then
-      break
-    end
-  end
-  -- Compute MLMC estimator mean & variance.
-  var ml_mean = 0.0
-  for lvl = 0, NUM_LEVELS do
-    ml_mean += y_mean[lvl]
-  end
-  var ml_var = 0.0
-  for lvl = 0, NUM_LEVELS do
-    ml_var += y_var[lvl] / num_samples[lvl]
-  end
-  C.printf('MLMC mean: %e\n', ml_mean)
-  C.printf('MLMC variance: %e\n', ml_var)
-  --C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)
+    C.printf('\n')
 
-  -- Comparison to MC on finest level w/ same computational cost
-  var total_C = 0.0
-  for lvl = 0, NUM_LEVELS do
-    total_C += num_samples[lvl]* y_costs[lvl]
+    C.printf('\n')
   end
+
+  var acc_MLMC = 0.0
+  var acc_MC = 0.0
+  var acc_MLMC_sq = 0.0
+  var acc_MC_sq = 0.0
+  count = 0
+  for i = 0, NUM_REPLICATES do
+    acc_MLMC += var_MLMC_replicates[i]
+    acc_MC += var_MC_replicates[i]
+    acc_MLMC_sq += pow(var_MLMC_replicates[i], 2)
+    acc_MC_sq += pow(var_MC_replicates[i], 2)
+    count += 1
+  end
+  var MLMC_replicate_mean = acc_MLMC/count
+  var MC_replicate_mean = acc_MC/count
+  var MLMC_replicate_var = acc_MLMC_sq/count - pow(MLMC_replicate_mean, 2)
+  var MC_replicate_var = acc_MC_sq/count - pow(MC_replicate_mean, 2)
   
-  var lvl = NUM_LEVELS-1
-  --var N_L = floor(total_C/y_costs[lvl])
-  var N_L = (int) (total_C/y_costs[lvl])
-  C.printf('MLMC total cost %e \n', total_C)
-  C.printf('MC number of samples %d \n', N_L)
+  C.printf('MLMC sample replicate mean: %e\n', MLMC_replicate_mean)
+  C.printf('MC sample replicate mean: %e\n', MC_replicate_mean)
+  C.printf('MLMC sample replicate variance: %e\n', MLMC_replicate_var)
+  C.printf('MC sample replicate variance: %e\n', MC_replicate_var)
 
-  if N_L > MAX_SAMPLES_PER_LEVEL then
-    C.printf('number of samples for MC exceeds MAX_SAMPLES_PER_LEVEL, results shown for MC with MAX_SAMPLES_PER_LEVEL\n')
-    N_L = MAX_SAMPLES_PER_LEVEL
+  C.printf('MLMC sample replicates: \n')
+  for i = 0, NUM_REPLICATES do
+    C.printf('%.1e ', var_MLMC_replicates[i])
   end
+  C.printf('\n')
 
-  for i = num_samples[NUM_LEVELS-1], N_L do
-    --Fill in details for additional samples needed for MC
-    samples[{lvl,i}].state = State.ACTIVE
-    samples[{lvl,i}].level = lvl
-    samples[{lvl,i}].mesh_size_l = mesh_sizes[lvl]
-    samples[{lvl,i}].mesh_size_l_1 = mesh_sizes[lvl-1]
-    for j=0,NUM_UNCERTAINTIES do
-      samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
-    end
-    eval_samples(p_samples_fine[{lvl,i}])
+
+  C.printf('MC sample replicates: \n')
+  for i = 0, NUM_REPLICATES do
+    C.printf('%.1e ', var_MC_replicates[i])
   end
-  var q_l_mean = C.fabs(calc_mean_l(p_samples_by_level[{lvl,0}]))
-  calc_response_MC(p_samples_by_level[{lvl,0}], q_l_mean)
-  var mean_MC_L = C.fabs(calc_mean_MC(p_samples_by_level[{lvl,0}]))
-  var var_MC_L = calc_var_MC(p_samples_by_level[{lvl, 0}], mean_MC_L)
-  C.printf('MC mean: %e\n', mean_MC_L)
-  C.printf('MC variance: %e\n', var_MC_L)
+  C.printf('\n')
 
 end
 regentlib.start(main)

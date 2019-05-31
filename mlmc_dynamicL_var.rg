@@ -283,7 +283,7 @@ task main()
 
 
   for lvl = 0, NUM_LEVELS_CONV do
-    C.printf('level: %d \n', lvl)
+    --C.printf('level: %d \n', lvl)
     __fence(__execution, __block)
     var t_start = regentlib.c.legion_get_current_time_in_micros()
     __fence(__execution, __block)
@@ -308,7 +308,7 @@ task main()
   for lvl = 0, NUM_LEVELS_CONV do
     var q_l_mean = C.fabs(calc_mean_l(p_samples_by_level_conv[{lvl,0}]))
     var q_l_mean_sq = C.fabs(calc_mean_l_sq(p_samples_by_level_conv[{lvl,0}]))
-    C.printf('lvl= %d, mean= %e, mean sq= %e \n', lvl, q_l_mean, q_l_mean_sq)
+    --C.printf('lvl= %d, mean= %e, mean sq= %e \n', lvl, q_l_mean, q_l_mean_sq)
     var q_l_1_mean = 0.0
     if lvl > 0 then
       q_l_1_mean = C.fabs(calc_mean_l_1(p_samples_by_level_conv[{lvl,0}]))
@@ -334,8 +334,8 @@ task main()
         end
       end
       var y_mean_fine = acc/count -pow(q_l_mean, 2)
-      C.printf('y_mean_fine = %e \n', y_mean_fine)
-      C.printf('alternate y_mean_fine = %e \n', acc_2/count)
+      --C.printf('y_mean_fine = %e \n', y_mean_fine)
+      --C.printf('alternate y_mean_fine = %e \n', acc_2/count)
       
       acc = 0.0
       count = 0
@@ -346,7 +346,7 @@ task main()
         end
       end
       var y_var_fine = acc/count - pow(y_mean_fine, 2)
-      C.printf('y_var_fine = %e \n', y_var_fine)
+      --C.printf('y_var_fine = %e \n', y_var_fine)
 
     end
   end
@@ -431,7 +431,7 @@ task main()
   var p_samples_by_level = partition(equal, samples, color_space_by_level)
   -- Main loop
   for iter = 0, MAX_ITERS do
-    C.printf('new iteration \n')
+    --C.printf('new iteration \n')
 
     -- Run remaining samples for all levels.
     for lvl = 0, NUM_LEVELS do
@@ -491,18 +491,18 @@ task main()
     var c = 0.0
     for lvl = 0, NUM_LEVELS do
       c += sqrt(y_costs[lvl] * y_var[lvl])
-      C.printf('debug y_costs[lvl] %e \n', y_costs[lvl])
-      C.printf('debu y_var[lvl] %e \n', y_var[lvl])
+      --C.printf('debug y_costs[lvl] %e \n', y_costs[lvl])
+      --C.printf('debu y_var[lvl] %e \n', y_var[lvl])
     end
-    C.printf('debug c pre divide %e \n', c)
+    --C.printf('debug c pre divide %e \n', c)
     c /= pow(TOLERANCE,2)/2.0
-    C.printf('debug TOLERANCE %e \n', TOLERANCE)
+    --C.printf('debug TOLERANCE %e \n', TOLERANCE)
  
     var almost_conv = true
     for lvl = 0, NUM_LEVELS do
-      C.printf('debug c: \n', c)
-      C.printf('debug sqrt(y_var[lvl]): %e \n', sqrt(y_var[lvl]))
-      C.printf('debug y_costs[lvl]: %e \n', y_costs[lvl])
+      --C.printf('debug c: \n', c)
+      --C.printf('debug sqrt(y_var[lvl]): %e \n', sqrt(y_var[lvl]))
+      --C.printf('debug y_costs[lvl]: %e \n', y_costs[lvl])
       opt_samples[lvl] =
         [int](ceil(c * sqrt(y_var[lvl] / y_costs[lvl])))
       if opt_samples[lvl] >= MAX_SAMPLES_PER_LEVEL then
@@ -519,41 +519,41 @@ task main()
       end
     end
 
-    C.printf('y_mean =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_mean[lvl])
-    end
-    C.printf('\n')
+   -- C.printf('y_mean =')
+   -- for lvl = 0, NUM_LEVELS do
+   --   C.printf(' %e', y_mean[lvl])
+   -- end
+   -- C.printf('\n')
 
 
-    C.printf('y_var =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_var[lvl])
-    end
-    C.printf('\n')
+   -- C.printf('y_var =')
+   -- for lvl = 0, NUM_LEVELS do
+   --   C.printf(' %e', y_var[lvl])
+   -- end
+   -- C.printf('\n')
 
-    C.printf('y_costs =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_costs[lvl])
-    end
-    C.printf('\n')
+   -- C.printf('y_costs =')
+   -- for lvl = 0, NUM_LEVELS do
+   --   C.printf(' %e', y_costs[lvl])
+   -- end
+   -- C.printf('\n')
 
-    C.printf('opt_samples =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %d', opt_samples[lvl])
-    end
-    C.printf('\n')
+   -- C.printf('opt_samples =')
+   -- for lvl = 0, NUM_LEVELS do
+   --   C.printf(' %d', opt_samples[lvl])
+   -- end
+   -- C.printf('\n')
 
     -- dynamically add levels
     if ((almost_conv) and (NUM_LEVELS < MAX_NUM_LEVELS)) then
-      C.printf('almost converged \n')
+     -- C.printf('almost converged \n')
       var rem = 0.0
       for i =-2, 1 do
         var lvl = NUM_LEVELS + i -1
         rem max= y_mean[lvl]*pow(2,alpha*i)/(pow(2,alpha)-1)
       end
       if rem > TOLERANCE/sqrt(2) then
-        C.printf('add level \n')
+       -- C.printf('add level \n')
         NUM_LEVELS += 1
         y_var[NUM_LEVELS-1] = y_var[NUM_LEVELS-2] / pow(2, beta)
 
@@ -606,8 +606,8 @@ task main()
   var lvl = NUM_LEVELS-1
   --var N_L = floor(total_C/y_costs[lvl])
   var N_L = (int) (total_C/y_costs[lvl])
-  C.printf('MLMC total cost %e \n', total_C)
-  C.printf('MC number of samples %d \n', N_L)
+  --C.printf('MLMC total cost %e \n', total_C)
+  --C.printf('MC number of samples %d \n', N_L)
 
   if N_L > MAX_SAMPLES_PER_LEVEL then
     C.printf('number of samples for MC exceeds MAX_SAMPLES_PER_LEVEL, results shown for MC with MAX_SAMPLES_PER_LEVEL\n')

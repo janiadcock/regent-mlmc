@@ -23,8 +23,9 @@ LEGION_OPTS="$LEGION_OPTS -ll:cpu 3"
 # Enable profiling output, for 1 rank.
 LEGION_OPTS="$LEGION_OPTS -lg:prof 2"
 LEGION_OPTS="$LEGION_OPTS -lg:prof_logfile prof_%.log"
+LEGION_OPTS="$LEGION_OPTS -ll:show_rsrv"
 
 gcc -Wall -Wextra -pedantic -g -fPIC -c diffusion.c
 gcc -shared -o libdiffusion.so diffusion.o
 rm -rf prof_*.log legion_prof/
-"$LEGION_DIR"/language/regent.py mlmc_dynamicL_var.rg $LEGION_OPTS
+mpiexec -np 2 --map-by ppr:1:node --bind-to none "$LEGION_DIR"/language/regent.py mlmc_dynamicL_var.rg $LEGION_OPTS

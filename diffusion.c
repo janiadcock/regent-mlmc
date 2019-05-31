@@ -23,7 +23,7 @@ double diffusion_1d(size_t num_grid_points,size_t num_uncertainties,double *xi_u
   double u_0 = 0.0;			// Set left boundary value for unknowns
   double u_1 = 0.0;			// Set right boundary value for unknowns
   double f = -1.0;			// Set forcing term value
-  double sigma = 1.0;			// Set variability of diffusivity
+  //double sigma = 1.0;			// Set variability of diffusivity
   double grid_spacing;
 
   // Generate grid array

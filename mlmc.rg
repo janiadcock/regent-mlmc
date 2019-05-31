@@ -119,6 +119,10 @@ end
 -------------------------------------------------------------------------------
 
 task main()
+  __fence(__execution, __block)
+  var t_start = regentlib.c.legion_get_current_time_in_micros()
+  __fence(__execution, __block)
+
   -- Initialize RNG.
   C.srand48(SEED)
   -- Inputs
@@ -201,12 +205,12 @@ task main()
         -- immediately.
         eval_samples(p_samples_fine[{lvl,i}])
       end
-      C.printf('level: %d \n', lvl)
-      C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
+      --C.printf('level: %d \n', lvl)
+      --C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
       num_samples[lvl] max= opt_samples[lvl]
       --C.printf('max: %f', max)
-      C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
-      C.printf('opt_samples[lvl]: %d \n', opt_samples[lvl])
+      --C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
+      --C.printf('opt_samples[lvl]: %d \n', opt_samples[lvl])
     end
     -- Update estimates for central moments.
     -- Update estimates for central moments.
@@ -234,28 +238,28 @@ task main()
                        'Please increase MAX_SAMPLES_PER_LEVEL')
     end
     -- Print output.
-    C.printf('Iteration %d:\n', iter)
-    C.printf('  y_costs =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_costs[lvl])
-    end
+    --C.printf('Iteration %d:\n', iter)
+    --C.printf('  y_costs =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %e', y_costs[lvl])
+    --end
   
-    C.printf('\n')
-    C.printf('  y_mean =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_mean[lvl])
-    end
-    C.printf('\n')
-    C.printf('  y_var =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_var[lvl])
-    end
-    C.printf('\n')
-    C.printf('  Nl =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %d', opt_samples[lvl])
-    end
-    C.printf('\n')
+    --C.printf('\n')
+    --C.printf('  y_mean =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %e', y_mean[lvl])
+    --end
+    --C.printf('\n')
+    --C.printf('  y_var =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %e', y_var[lvl])
+    --end
+    --C.printf('\n')
+    --C.printf('  Nl =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %d', opt_samples[lvl])
+    --end
+    --C.printf('\n')
     -- Decide if we have converged.
     var opt_samples_ran = true
     for lvl = 0, NUM_LEVELS do
@@ -279,7 +283,12 @@ task main()
   end
   C.printf('MLMC mean: %e\n', ml_mean)
   C.printf('MLMC stddev: %e\n', sqrt(ml_var))
-  C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)
+  --C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)
+
+  __fence(__execution, __block)
+  var t_end = regentlib.c.legion_get_current_time_in_micros()
+  C.printf("time (ms): %d\n", (t_end - t_start)/1000)
+  __fence(__execution, __block)
 end
 
 regentlib.start(main)

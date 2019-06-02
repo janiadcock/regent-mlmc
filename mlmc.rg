@@ -44,6 +44,20 @@ local State = {
   COMPLETED = 2,
 }
 
+local NUM_U_INPUT = 9000
+-------------------------------------------------------------------------------
+-- Tools to read in uncertainties from file
+
+terra read_header(f : &C.FILE)
+  var x: uint64
+  return C.fscanf(f, "%llu\n", &x)
+end
+
+terra read_line(f : &C.FILE, value : &double)
+  return C.fscanf(f, "%lf\n", &value[0]) == 1
+end
+-------------------------------------------------------------------------------
+
 -------------------------------------------------------------------------------
 -- Tasks
 -------------------------------------------------------------------------------
@@ -126,7 +140,7 @@ task main()
   -- Initialize RNG.
   C.srand48(SEED)
   -- Inputs
-  var opt_samples : int[NUM_LEVELS] = array(1000,1000,1000)
+  var opt_samples : int[NUM_LEVELS] = array(100,100,100)
   var mesh_sizes : int[NUM_LEVELS] = array(3, 5, 9)
   var q_costs : double[NUM_LEVELS] = array(1.0,2.0,4.0)
   var y_costs : double[NUM_LEVELS] =
@@ -164,6 +178,23 @@ task main()
   var p_samples_by_level = partition(equal, samples, color_space_by_level)
   -- Main loop
 
+  --If reading in uncertainties from file
+  var f : &C.FILE
+  f = C.fopen("uncertainties.txt", "rb")
+  read_header(f)
+  --regentlib.assert(read_header(f) == NUM_U_INPUT, "Input file wrong number of uncertainties.")
+  var uncertainties : double[NUM_U_INPUT]
+  for i=0, NUM_U_INPUT do
+    var value : double[1]
+    regentlib.assert(read_line(f, value), "Less data than expected")
+    uncertainties[i]=value[0]
+  end
+  C.fclose(f)
+  
+  --for i = 0, 10 do
+  --  C.printf("%f\n", uncertainties[i])
+  --end
+
  -- var fp = C.fopen('rand_1000.csv', 1024, "r")
  -- var line : int8[1024]
  -- for i=0, 10 do
@@ -194,7 +225,8 @@ task main()
         end
         for j = 0, NUM_UNCERTAINTIES do
           --samples[{lvl,i}].uncertainties[j] = .5
-          samples[{lvl,i}].uncertainties[j] = C.drand48()
+          --samples[{lvl,i}].uncertainties[j] = C.drand48()
+          samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
         end
         -- Invoke `eval_samples` for a set of samples containing just the
         -- newly created sample. This task will be launched asynchronously; the
@@ -205,12 +237,11 @@ task main()
         -- immediately.
         eval_samples(p_samples_fine[{lvl,i}])
       end
-      --C.printf('level: %d \n', lvl)
-      --C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
+      C.printf('level: %d \n', lvl)
+      C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
       num_samples[lvl] max= opt_samples[lvl]
-      --C.printf('max: %f', max)
-      --C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
-      --C.printf('opt_samples[lvl]: %d \n', opt_samples[lvl])
+      C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
+      C.printf('opt_samples[lvl]: %d \n', opt_samples[lvl])
     end
     -- Update estimates for central moments.
     -- Update estimates for central moments.
@@ -238,28 +269,28 @@ task main()
                        'Please increase MAX_SAMPLES_PER_LEVEL')
     end
     -- Print output.
-    --C.printf('Iteration %d:\n', iter)
-    --C.printf('  y_costs =')
-    --for lvl = 0, NUM_LEVELS do
-    --  C.printf(' %e', y_costs[lvl])
-    --end
+    C.printf('Iteration %d:\n', iter)
+    C.printf('  y_costs =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %e', y_costs[lvl])
+    end
   
-    --C.printf('\n')
-    --C.printf('  y_mean =')
-    --for lvl = 0, NUM_LEVELS do
-    --  C.printf(' %e', y_mean[lvl])
-    --end
-    --C.printf('\n')
-    --C.printf('  y_var =')
-    --for lvl = 0, NUM_LEVELS do
-    --  C.printf(' %e', y_var[lvl])
-    --end
-    --C.printf('\n')
-    --C.printf('  Nl =')
-    --for lvl = 0, NUM_LEVELS do
-    --  C.printf(' %d', opt_samples[lvl])
-    --end
-    --C.printf('\n')
+    C.printf('\n')
+    C.printf('  y_mean =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %e', y_mean[lvl])
+    end
+    C.printf('\n')
+    C.printf('  y_var =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %e', y_var[lvl])
+    end
+    C.printf('\n')
+    C.printf('  Nl =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %d', opt_samples[lvl])
+    end
+    C.printf('\n')
     -- Decide if we have converged.
     var opt_samples_ran = true
     for lvl = 0, NUM_LEVELS do
@@ -282,7 +313,7 @@ task main()
     ml_var += y_var[lvl] / num_samples[lvl]
   end
   C.printf('MLMC mean: %e\n', ml_mean)
-  C.printf('MLMC stddev: %e\n', sqrt(ml_var))
+  C.printf('MLMC std dev: %e\n', sqrt(ml_var))
   --C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)
 
   __fence(__execution, __block)

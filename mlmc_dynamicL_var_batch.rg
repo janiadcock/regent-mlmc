@@ -42,7 +42,7 @@ local NUM_SAMPLES_CONV = 1000
 local NUM_LEVELS_CONV = 9
 local NUM_U_INPUT = 100000
 
-local NUM_REPLICATES = 10
+local NUM_REPLICATES = 100
 -- Enumeration of states that a sample can be in.
 local State = {
   INACTIVE = 0,
@@ -398,7 +398,7 @@ task main()
   C.printf('expected gamma: %f \n', gamma)
   var NUM_LEVELS = 3
   var MAX_NUM_LEVELS = 10
-  var opt_samples : int[MAX_NUM_LEVELS] = array(10,10,10,0,0,0,0,0,0,0)
+  var opt_samples : int[MAX_NUM_LEVELS] = array(100,100,100,0,0,0,0,0,0,0)
   var mesh_sizes : int[MAX_NUM_LEVELS] = array(3,5,9,17,33,65,129,257,513,1025)
   var y_costs : double[MAX_NUM_LEVELS] = array(1.0,2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0,1024.0)
 
@@ -444,7 +444,7 @@ task main()
     --C.printf('num uncertanties used: %d \n', uncertainty_i)
     --reset samples
     for i = 0, 3 do
-      opt_samples[i] = 10
+      opt_samples[i] = 100
     end
     for i = 3, MAX_NUM_LEVELS do
       opt_samples[i] = 0   
@@ -614,8 +614,8 @@ task main()
     for lvl = 0, NUM_LEVELS do
       ml_var += y_var[lvl] / num_samples[lvl]
     end
-    C.printf('MLMC mean: %e\n', ml_mean)
-    C.printf('MLMC stddev: %e\n', sqrt(ml_var))
+    --C.printf('MLMC mean: %e\n', ml_mean)
+    --C.printf('MLMC stddev: %e\n', sqrt(ml_var))
     --C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)
   
     -- Comparison to MC on finest level w/ same computational cost
@@ -627,8 +627,8 @@ task main()
     var lvl = NUM_LEVELS-1
     --var N_L = floor(total_C/y_costs[lvl])
     var N_L = (int) (total_C/y_costs[lvl])
-    C.printf('MLMC total cost %e \n', total_C)
-    C.printf('MC number of samples %d \n', N_L)
+    --C.printf('MLMC total cost %e \n', total_C)
+    --C.printf('MC number of samples %d \n', N_L)
   
     if N_L > MAX_SAMPLES_PER_LEVEL then
       C.printf('number of samples for MC exceeds MAX_SAMPLES_PER_LEVEL, results shown for MC with MAX_SAMPLES_PER_LEVEL\n')
@@ -651,26 +651,26 @@ task main()
     calc_response_MC(p_samples_by_level[{lvl,0}], q_l_mean)
     var mean_MC_L = C.fabs(calc_mean_MC(p_samples_by_level[{lvl,0}]))
     var var_MC_L = calc_var_MC(p_samples_by_level[{lvl, 0}], mean_MC_L)
-    C.printf('MC mean: %e\n', mean_MC_L)
-    C.printf('MC stddev: %e\n', sqrt(var_MC_L))
+    --C.printf('MC mean: %e\n', mean_MC_L)
+    --C.printf('MC stddev: %e\n', sqrt(var_MC_L))
     var_MLMC_replicates[k] = ml_mean
     var_MC_replicates[k] = mean_MC_L
 
 
-    C.printf('opt_samples =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %d', opt_samples[lvl])
-    end
-    C.printf('\n')
+   -- C.printf('opt_samples =')
+   -- for lvl = 0, NUM_LEVELS do
+   --   C.printf(' %d', opt_samples[lvl])
+   -- end
+   -- C.printf('\n')
 
 
-    C.printf('num_samples =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %d', num_samples[lvl])
-    end
-    C.printf('\n')
+   -- C.printf('num_samples =')
+   -- for lvl = 0, NUM_LEVELS do
+   --   C.printf(' %d', num_samples[lvl])
+   -- end
+   -- C.printf('\n')
 
-    C.printf('\n')
+   -- C.printf('\n')
   end
 
   var acc_MLMC = 0.0
@@ -691,9 +691,9 @@ task main()
   var MC_replicate_var = acc_MC_sq/count - pow(MC_replicate_mean, 2)
   
   C.printf('MLMC sample replicate mean: %e\n', MLMC_replicate_mean)
-  C.printf('MC sample replicate mean: %e\n', MC_replicate_mean)
+  --C.printf('MC sample replicate mean: %e\n', MC_replicate_mean)
   C.printf('MLMC sample replicate variance: %e\n', MLMC_replicate_var)
-  C.printf('MC sample replicate variance: %e\n', MC_replicate_var)
+  --C.printf('MC sample replicate variance: %e\n', MC_replicate_var)
 
   C.printf('MLMC sample replicates: \n')
   for i = 0, NUM_REPLICATES do
@@ -702,11 +702,11 @@ task main()
   C.printf('\n')
 
 
-  C.printf('MC sample replicates: \n')
-  for i = 0, NUM_REPLICATES do
-    C.printf('%.1e ', var_MC_replicates[i])
-  end
-  C.printf('\n')
+--  C.printf('MC sample replicates: \n')
+--  for i = 0, NUM_REPLICATES do
+--    C.printf('%.1e ', var_MC_replicates[i])
+--  end
+--  C.printf('\n')
 
 end
 regentlib.start(main)

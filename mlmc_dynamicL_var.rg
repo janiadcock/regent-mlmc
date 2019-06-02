@@ -397,7 +397,7 @@ task main()
   C.printf('expected gamma: %f \n', gamma)
   var NUM_LEVELS = 3
   var MAX_NUM_LEVELS = 10
-  var opt_samples : int[MAX_NUM_LEVELS] = array(10,10,10,0,0,0,0,0,0,0)
+  var opt_samples : int[MAX_NUM_LEVELS] = array(100,100,100,0,0,0,0,0,0,0)
   var mesh_sizes : int[MAX_NUM_LEVELS] = array(3,5,9,17,33,65,129,257,513,1025)
   var y_costs : double[MAX_NUM_LEVELS] = array(1.0,2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0,1024.0)
   -- Algorithm state
@@ -597,6 +597,12 @@ task main()
   C.printf('MLMC variance: %e\n', ml_var)
   --C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)
 
+  C.printf('MLMC opt_samples =')
+  for lvl = 0, NUM_LEVELS do
+    C.printf(' %d', opt_samples[lvl])
+  end
+  C.printf('\n')
+
   -- Comparison to MC on finest level w/ same computational cost
   var total_C = 0.0
   for lvl = 0, NUM_LEVELS do
@@ -607,7 +613,7 @@ task main()
   --var N_L = floor(total_C/y_costs[lvl])
   var N_L = (int) (total_C/y_costs[lvl])
   --C.printf('MLMC total cost %e \n', total_C)
-  --C.printf('MC number of samples %d \n', N_L)
+  C.printf('MC number of samples %d \n', N_L)
 
   if N_L > MAX_SAMPLES_PER_LEVEL then
     C.printf('number of samples for MC exceeds MAX_SAMPLES_PER_LEVEL, results shown for MC with MAX_SAMPLES_PER_LEVEL\n')

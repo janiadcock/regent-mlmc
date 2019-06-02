@@ -235,7 +235,7 @@ task main()
     y_mean_conv[lvl] = C.fabs(calc_mean(p_samples_by_level_conv[{lvl,0}]))
     --var N_samples_conv = NUM_SAMPLES_CONV 
     y_var_conv[lvl] = calc_var(p_samples_by_level_conv[{lvl,0}], y_mean_conv[lvl])
-    C.printf('lvl= %d, y_var_conv[lvl]= %e \n', lvl, y_var_conv[lvl])
+    C.printf('lvl= %d, y_mean_conv[lvl] = %e, y_var_conv[lvl]= %e \n', lvl, y_mean_conv[lvl], y_var_conv[lvl])
   end
 
   --should change into C function
@@ -284,7 +284,7 @@ task main()
   C.printf('expected gamma: %f \n', gamma)
   var NUM_LEVELS = 3
   var MAX_NUM_LEVELS = 10
-  var opt_samples : int[MAX_NUM_LEVELS] = array(10,10,10,0,0,0,0,0,0,0)
+  var opt_samples : int[MAX_NUM_LEVELS] = array(100,100,100,0,0,0,0,0,0,0)
   var mesh_sizes : int[MAX_NUM_LEVELS] = array(3,5,9,17,33,65,129,257,513,1025)
   var y_costs : double[MAX_NUM_LEVELS] = array(1.0,2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0,1024.0)
   -- Algorithm state

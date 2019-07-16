@@ -17,4 +17,4 @@ LEGION_OPTS="$LEGION_OPTS -lg:prof_logfile prof_%.log"
 gcc -Wall -Wextra -pedantic -g -fPIC -c diffusion.c
 gcc -shared -o libdiffusion.so diffusion.o
 rm -rf prof_*.log legion_prof/
-"$LEGION_DIR"/language/regent.py mlmc.rg $LEGION_OPTS
+"$LEGION_DIR"/language/regent.py mlmc_largePartition.rg $LEGION_OPTS

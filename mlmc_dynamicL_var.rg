@@ -397,7 +397,7 @@ task main()
   C.printf('expected gamma: %f \n', gamma)
   var NUM_LEVELS = 3
   var MAX_NUM_LEVELS = 10
-  var opt_samples : int[MAX_NUM_LEVELS] = array(100,100,100,0,0,0,0,0,0,0)
+  var opt_samples : int[MAX_NUM_LEVELS] = array(10,10,1,0,0,0,0,0,0,0)
   var mesh_sizes : int[MAX_NUM_LEVELS] = array(3,5,9,17,33,65,129,257,513,1025)
   var y_costs : double[MAX_NUM_LEVELS] = array(1.0,2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0,1024.0)
   -- Algorithm state
@@ -612,7 +612,7 @@ task main()
   var lvl = NUM_LEVELS-1
   --var N_L = floor(total_C/y_costs[lvl])
   var N_L = (int) (total_C/y_costs[lvl])
-  --C.printf('MLMC total cost %e \n', total_C)
+  C.printf('MLMC total cost %e \n', total_C)
   C.printf('MC number of samples %d \n', N_L)
 
   if N_L > MAX_SAMPLES_PER_LEVEL then

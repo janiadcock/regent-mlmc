@@ -31,4 +31,4 @@ gcc -Wall -Wextra -pedantic -g -fPIC -c diffusion.c
 gcc -shared -o libdiffusion.so diffusion.o
 rm -rf prof_*.log legion_prof/
 mkdir -p $OUTPUT
-mpiexec -np $NODES --map-by ppr:1:node --bind-to none "$LEGION_DIR"/language/regent.py mlmc_largePartition.rg $LEGION_OPTS 2>$OUTPUT"/e.log" 1>$OUTPUT"/o.log"
+mpiexec -np $NODES --map-by ppr:1:node --bind-to none "$LEGION_DIR"/language/regent.py mlmc.rg $LEGION_OPTS 2>$OUTPUT"/e.log" 1>$OUTPUT"/o.log"

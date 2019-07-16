@@ -26,6 +26,7 @@ terralib.linklibrary('libdiffusion.so')
 local pow = regentlib.pow(double)
 local sqrt = regentlib.sqrt(double)
 local ceil = regentlib.ceil(double)
+local floor = regentlib.floor(double)
 -------------------------------------------------------------------------------
 -- Constants & inputs
 -------------------------------------------------------------------------------
@@ -33,9 +34,10 @@ local ceil = regentlib.ceil(double)
 local NUM_LEVELS = 3
 local NUM_UNCERTAINTIES = 1
 local SEED = 1237
-local MAX_SAMPLES_PER_LEVEL = 1000
+local MAX_SAMPLES_PER_LEVEL = 10000
 local MAX_ITERS = 10
-local TOLERANCE = 0.001
+local TOLERANCE = 0.0001
+local BATCH_SIZE = 100
 
 -- Enumeration of states that a sample can be in.
 local State = {
@@ -81,8 +83,12 @@ where
   writes(samples.response),
   reads writes(samples.state)
 do
+  --var j = 0
   for s in samples do
     if s.state == State.ACTIVE then
+      --__fence(__execution, __block)
+      --C.printf('i_in_batch %d: active \n', j)
+      --__fence(__execution, __block)
       -- Run the simulation once or twice, depending on the sample's level.
       if s.level > 0 then
         var q_l =
@@ -95,7 +101,12 @@ do
           SIM.diffusion_1d(s.mesh_size_l, NUM_UNCERTAINTIES, s.uncertainties)
       end
       s.state = State.COMPLETED
+    else
+      --__fence(__execution, __block)
+      --C.printf('i_in_batch %d \n', j)
+      --__fence(__execution, __block)
     end
+    --j += 1
   end
 end
 
@@ -165,9 +176,7 @@ task main()
   -- elements, therefore each sub-region will contain a single sample; this is
   -- usually not ideal, because it means we will end up launching many tasks,
   -- each doing very little work.
-  C.printf('%f \n', MAX_SAMPLES_PER_LEVEL/100)
-  C.printf('%d \n', MAX_SAMPLES_PER_LEVEL/100)
-  var color_space_fine = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL/100})
+  var color_space_fine = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL/BATCH_SIZE})
   var p_samples_fine = partition(equal, samples, color_space_fine)
   -- The same region can be partition in multiple ways; when switching from
   -- using one partition to the other, the runtime will automatically check if
@@ -213,7 +222,7 @@ task main()
  -- end
  -- C.fclose(fp)
 
-  var iter = 0
+  var iter_print = 0
   for iter = 0, MAX_ITERS do
     -- Run remaining samples for all levels.
     for lvl = 0, NUM_LEVELS do
@@ -230,6 +239,30 @@ task main()
           --samples[{lvl,i}].uncertainties[j] = C.drand48()
           samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
         end
+      end
+      --want floor for i_batch_start, which is equivalent to casting to (int)
+      --want ceil for i_end but ceil returns double so manually do ceil
+      --(int) truncates and returns int
+      --can't use floor() and ceil() b/c returns double so can't iterate over; 
+      --if convert double with (int) get untyped which can't iterate over
+      var i_batch_start = (int) ((double) (num_samples[lvl])/BATCH_SIZE)
+      var i_batch_end = (int) ((double) (opt_samples[lvl])/BATCH_SIZE)
+      if (double) (opt_samples[lvl])/BATCH_SIZE > i_batch_end then
+        --C.printf('i_batch_end += 1 \n')
+        i_batch_end += 1
+      end
+      --__fence(__execution, __block)
+      --C.printf('num_samples[lvl] %d \n', num_samples[lvl])
+      --C.printf('opt_samples[lvl] %d \n', opt_samples[lvl])
+      --C.printf('num_samples[lvl]/BATCH_SIZE %f \n', (double) (num_samples[lvl])/BATCH_SIZE)
+      --C.printf('opt_samples[lvl]/BATCH_SIZE %f \n', (double) (opt_samples[lvl])/BATCH_SIZE)
+      --C.printf('i_batch_start %d \n', i_batch_start)
+      --C.printf('i_batch_end %d \n', i_batch_end)
+      --__fence(__execution, __block)
+      for i_batch = i_batch_start, i_batch_end do
+        --__fence(__execution, __block)
+        --C.printf('i_batch: %d \n', i_batch)
+        --__fence(__execution, __block)
         -- Invoke `eval_samples` for a set of samples containing just the
         -- newly created sample. This task will be launched asynchronously; the
         -- main task will continue running and launching new tasks. The runtime
@@ -237,15 +270,16 @@ task main()
         -- all tasks launched before it. It will conclude that the new task is
         -- independent from all the others, and thus can be queued to run
         -- immediately.
-        eval_samples(p_samples_fine[{lvl,i}])
+        eval_samples(p_samples_fine[{lvl,i_batch}])
       end
-      C.printf('level: %d \n', lvl)
-      C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
+      --__fence(__execution, __block)
+      --C.printf('level: %d \n', lvl)
+      --C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
       num_samples[lvl] max= opt_samples[lvl]
-      C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
-      C.printf('opt_samples[lvl]: %d \n', opt_samples[lvl])
+      --C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
+      --C.printf('pre opt_samples[lvl]: %d \n', opt_samples[lvl])
+      --__fence(__execution, __block)
     end
-    -- Update estimates for central moments.
     -- Update estimates for central moments.
     for lvl = 0, NUM_LEVELS do
       -- At this point we switch to using the partition by level; the runtime
@@ -271,28 +305,30 @@ task main()
                        'Please increase MAX_SAMPLES_PER_LEVEL')
     end
     -- Print output.
-    C.printf('Iteration %d:\n', iter)
-    C.printf('  y_costs =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_costs[lvl])
-    end
+    --__fence(__execution, __block)
+    --C.printf('Iteration %d:\n', iter)
+    --C.printf('  y_costs =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %e', y_costs[lvl])
+    --end
   
-    C.printf('\n')
-    C.printf('  y_mean =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_mean[lvl])
-    end
-    C.printf('\n')
-    C.printf('  y_var =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_var[lvl])
-    end
-    C.printf('\n')
-    C.printf('  Nl =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %d', opt_samples[lvl])
-    end
-    C.printf('\n')
+    --C.printf('\n')
+    --C.printf('  y_mean =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %e', y_mean[lvl])
+    --end
+    --C.printf('\n')
+    --C.printf('  y_var =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %e', y_var[lvl])
+    --end
+    --C.printf('\n')
+    --C.printf('  opt_samples =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %d', opt_samples[lvl])
+    --end
+    --C.printf('\n')
+    --__fence(__execution, __block)
     -- Decide if we have converged.
     var opt_samples_ran = true
     for lvl = 0, NUM_LEVELS do
@@ -304,6 +340,7 @@ task main()
     if opt_samples_ran then
       break
     end
+    iter_print += 1
   end
   -- Compute MLMC estimator mean & variance.
   var ml_mean = 0.0
@@ -314,6 +351,19 @@ task main()
   for lvl = 0, NUM_LEVELS do
     ml_var += y_var[lvl] / num_samples[lvl]
   end
+  --print final results
+  __fence(__execution, __block)
+  C.printf('iterations = %d \n', iter_print+1)
+  C.printf('num_samples =')
+  for lvl = 0, NUM_LEVELS do
+    C.printf(' %d', num_samples[lvl])
+  end
+  C.printf('\n')
+  C.printf('opt_samples =')
+  for lvl = 0, NUM_LEVELS do
+    C.printf(' %d', opt_samples[lvl])
+  end
+  C.printf('\n')
   C.printf('MLMC mean: %e\n', ml_mean)
   C.printf('MLMC std dev: %e\n', sqrt(ml_var))
   --C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)

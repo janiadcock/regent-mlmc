@@ -8,7 +8,7 @@ fi
 
 LEGION_OPTS=
 # Reserve 3 CPU cores on each rank for running Legion tasks.
-LEGION_OPTS="$LEGION_OPTS -ll:cpu 3"
+LEGION_OPTS="$LEGION_OPTS -ll:cpu 1"
 # Enable profiling output, for 1 rank.
 LEGION_OPTS="$LEGION_OPTS -lg:prof 1"
 # Specify the name of the profiler output file ("prof_<RANKID>.log").

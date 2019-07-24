@@ -211,7 +211,7 @@ task main()
  -- end
  -- C.fclose(fp)
 
-  var iter = 0
+  var iter_print = 0
   for iter = 0, MAX_ITERS do
     -- Run remaining samples for all levels.
     for lvl = 0, NUM_LEVELS do
@@ -237,11 +237,11 @@ task main()
         -- immediately.
         eval_samples(p_samples_fine[{lvl,i}])
       end
-      C.printf('level: %d \n', lvl)
-      C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
+      --C.printf('level: %d \n', lvl)
+      --C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
       num_samples[lvl] max= opt_samples[lvl]
-      C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
-      C.printf('opt_samples[lvl]: %d \n', opt_samples[lvl])
+      --C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
+      --C.printf('opt_samples[lvl]: %d \n', opt_samples[lvl])
     end
     -- Update estimates for central moments.
     -- Update estimates for central moments.
@@ -269,28 +269,28 @@ task main()
                        'Please increase MAX_SAMPLES_PER_LEVEL')
     end
     -- Print output.
-    C.printf('Iteration %d:\n', iter)
-    C.printf('  y_costs =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_costs[lvl])
-    end
+    --C.printf('Iteration %d:\n', iter)
+    --C.printf('  y_costs =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %e', y_costs[lvl])
+    --end
   
-    C.printf('\n')
-    C.printf('  y_mean =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_mean[lvl])
-    end
-    C.printf('\n')
-    C.printf('  y_var =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %e', y_var[lvl])
-    end
-    C.printf('\n')
-    C.printf('  Nl =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %d', opt_samples[lvl])
-    end
-    C.printf('\n')
+    --C.printf('\n')
+    --C.printf('  y_mean =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %e', y_mean[lvl])
+    --end
+    --C.printf('\n')
+    --C.printf('  y_var =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %e', y_var[lvl])
+    --end
+    --C.printf('\n')
+    --C.printf('  Nl =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %d', opt_samples[lvl])
+    --end
+    --C.printf('\n')
     -- Decide if we have converged.
     var opt_samples_ran = true
     for lvl = 0, NUM_LEVELS do
@@ -302,6 +302,7 @@ task main()
     if opt_samples_ran then
       break
     end
+    iter_print += 1
   end
   -- Compute MLMC estimator mean & variance.
   var ml_mean = 0.0
@@ -312,6 +313,20 @@ task main()
   for lvl = 0, NUM_LEVELS do
     ml_var += y_var[lvl] / num_samples[lvl]
   end
+
+  --print final results
+  __fence(__execution, __block)
+  C.printf('iterations = %d \n', iter_print+1)
+  C.printf('num_samples =')
+  for lvl = 0, NUM_LEVELS do
+    C.printf(' %d', num_samples[lvl])
+  end
+  C.printf('\n')
+  C.printf('opt_samples =')
+  for lvl = 0, NUM_LEVELS do
+    C.printf(' %d', opt_samples[lvl])
+  end
+  C.printf('\n')
   C.printf('MLMC mean: %e\n', ml_mean)
   C.printf('MLMC std dev: %e\n', sqrt(ml_var))
   --C.printf('MLMC cov: %e\n', sqrt(ml_var)/ml_mean)

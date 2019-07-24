@@ -10,8 +10,9 @@
 #echo "Running [your app] with: $cmd on $SLURM_JOB_NODELIST in directory "'pwd'
 
 NODES="1"
-CPUS="2"
-OUTPUT="debug"
+CPUS="4"
+# OUTPUT="debug"
+OUTPUT="scaling/mean_crossProduct_maxSamples10000_initial1000_sizeBatch1000_"$NODES"nodes_"$CPUS"cpu"
 
 export INCLUDE_PATH=.
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:."
@@ -23,13 +24,14 @@ LEGION_OPTS=
 # Reserve CPUs cores on each rank for running Legion tasks.
 LEGION_OPTS="$LEGION_OPTS -ll:cpu "$CPUS
 # Enable profiling output, for 1 rank.
-::LEGION_OPTS="$LEGION_OPTS -lg:prof "$NODES
-::LEGION_OPTS="$LEGION_OPTS -lg:prof_logfile "$OUTPUT"/prof_%.log"
-::LEGION_OPTS="$LEGION_OPTS -ll:show_rsrv"
-LEGION_OPTS="$LEGION_OPTS -lg:spy -logfile "$OUTPUT"/spy_%.log "
+LEGION_OPTS="$LEGION_OPTS -lg:prof "$NODES
+LEGION_OPTS="$LEGION_OPTS -lg:prof_logfile "$OUTPUT"/prof_%.log"
+# LEGION_OPTS="$LEGION_OPTS -ll:show_rsrv"
+# LEGION_OPTS="$LEGION_OPTS -lg:spy -logfile "$OUTPUT"/spy_%.log "
 
 gcc -Wall -Wextra -pedantic -g -fPIC -c diffusion.c
 gcc -shared -o libdiffusion.so diffusion.o
-rm -rf prof_*.log legion_prof/
+rm -rf "$OUTPUT"/prof_*.log "$OUTPUT"/legion_prof/
+rm "$OUTPUT"/spy_*.log
 mkdir -p $OUTPUT
 mpiexec -np $NODES --map-by ppr:1:node --bind-to none "$LEGION_DIR"/language/regent.py mlmc_largePartition_crossProduct.rg $LEGION_OPTS 2>$OUTPUT"/e.log" 1>$OUTPUT"/o.log"

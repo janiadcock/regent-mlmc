@@ -1,0 +1,44 @@
+level	start	end	color	opacity	title	initiation	in	out	children	parents	prof_uid
+3	82136	134160	#00ff42	1.0	Partition By Field	20					199
+3	134231	134253	#00ff42	1.0	Partition By Field	32					6087
+3	134281	141231	#00ff42	1.0	Partition By Image Range	22					6088
+3	141253	141279	#00ff42	1.0	Partition By Image Range	34					7619
+3	141296	141344	#8500ff	1.0	Intersections	42					6089
+3	141357	141376	#8500ff	1.0	Intersections	42					6090
+3	141383	141423	#8500ff	1.0	Intersections	42					6091
+3	143987	143994	#000000	1.0	Intersection						7160
+3	144043	144044	#000000	1.0	Intersection						7161
+3	144115	144155	#000000	1.0	Union Reduction						7162
+3	144235	144236	#000000	1.0	Intersection						6092
+3	145125	145127	#000000	1.0	Intersection						7620
+3	145154	145155	#000000	1.0	Intersection						7621
+3	145217	145225	#000000	1.0	Union Reduction						7622
+3	145263	145264	#000000	1.0	Intersection						7623
+3	159827	159828	#000000	1.0	Intersection						7163
+3	159859	159860	#000000	1.0	Intersection						200
+3	159864	159874	#000000	1.0	Union Reduction						7164
+3	159935	159937	#000000	1.0	Intersection						7165
+3	162437	162438	#000000	1.0	Intersection						7166
+3	165674	165689	#000000	1.0	Intersection						12241
+3	167938	167939	#000000	1.0	Intersection						12520
+3	183244	183245	#000000	1.0	Intersection						201
+3	183259	183260	#000000	1.0	Intersection						202
+3	183281	183282	#000000	1.0	Intersection						7167
+3	183293	183294	#000000	1.0	Intersection						7624
+3	183302	183303	#000000	1.0	Intersection						203
+3	183308	183309	#000000	1.0	Intersection						7625
+3	183318	183318	#000000	1.0	Intersection						7168
+3	183327	183327	#000000	1.0	Intersection						7169
+3	183334	183335	#000000	1.0	Intersection						7626
+3	185414	185416	#000000	1.0	Intersection						6093
+3	185648	185649	#000000	1.0	Intersection						6094
+3	185960	185961	#000000	1.0	Intersection						204
+3	186278	186279	#000000	1.0	Intersection						6095
+3	186627	186628	#000000	1.0	Intersection						6096
+3	186694	186695	#000000	1.0	Intersection						6097
+3	186790	186792	#000000	1.0	Intersection						7627
+3	186875	186877	#000000	1.0	Intersection						7170
+3	186940	186941	#000000	1.0	Intersection						7171
+3	192560	192562	#000000	1.0	Intersection						12521
+3	193423	193425	#000000	1.0	Intersection						7172
+3	194430	194431	#000000	1.0	Intersection						205

@@ -196,19 +196,19 @@ task main()
   var p_samples_fine = cross_product(p_samples_by_level, p_samples_by_batch)
 
   ----Access each location through the cross product
-  for i_lvl in colors_level do
-    C.printf('i_lvl {%d, %d}\n', i_lvl.x, i_lvl.y)
-    var p_lvl = p_samples_fine[i_lvl]
-    for i_batch in colors_batch do
-      C.printf('  i_batch {%d, %d}\n', i_batch.x, i_batch.y)
-      var p_lvl_batch = p_lvl[i_batch]
-      for i in p_lvl_batch do
-        p_lvl_batch[i].count += 1
-        C.printf('    i {%d, %d}, count %d\n', i.x, i.y, p_lvl_batch[i].count)
-      end
-    end
-    C.printf('\n')
-  end
+  --for i_lvl in colors_level do
+  --  C.printf('i_lvl {%d, %d}\n', i_lvl.x, i_lvl.y)
+  --  var p_lvl = p_samples_fine[i_lvl]
+  --  for i_batch in colors_batch do
+  --    C.printf('  i_batch {%d, %d}\n', i_batch.x, i_batch.y)
+  --    var p_lvl_batch = p_lvl[i_batch]
+  --    for i in p_lvl_batch do
+  --      p_lvl_batch[i].count += 1
+  --      C.printf('    i {%d, %d}, count %d\n', i.x, i.y, p_lvl_batch[i].count)
+  --    end
+  --  end
+  --  C.printf('\n')
+  --end
 
   --var color_space_fine = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL/BATCH_SIZE})
   --var p_samples_fine = partition(equal, samples, color_space_fine)
@@ -251,9 +251,9 @@ task main()
 
   var iter_print = 0
   for iter = 0, MAX_ITERS do
-    __fence(__execution, __block)
-    C.printf('iteration %d\n', iter)
-    __fence(__execution, __block)
+    --__fence(__execution, __block)
+    --C.printf('iteration %d\n', iter)
+    --__fence(__execution, __block)
 
     -- Run remaining samples for all levels.
     for lvl = 0, NUM_LEVELS do
@@ -290,7 +290,6 @@ task main()
       --C.printf('i_batch_start %d \n', i_batch_start)
       --C.printf('i_batch_end %d \n', i_batch_end)
       --__fence(__execution, __block)
-      __demand(__parallel)
       for i_batch = i_batch_start, i_batch_end do
         --__fence(__execution, __block)
         --C.printf('i_batch: %d \n', i_batch)
@@ -340,7 +339,7 @@ task main()
                        'Please increase MAX_SAMPLES_PER_LEVEL')
     end
     -- Print output.
-    __fence(__execution, __block)
+    --__fence(__execution, __block)
     --C.printf('Iteration %d:\n', iter)
     --C.printf('  y_costs =')
     --for lvl = 0, NUM_LEVELS do
@@ -358,12 +357,12 @@ task main()
     --  C.printf(' %e', y_var[lvl])
     --end
     --C.printf('\n')
-    C.printf('  opt_samples =')
-    for lvl = 0, NUM_LEVELS do
-      C.printf(' %d', opt_samples[lvl])
-    end
-    C.printf('\n')
-    __fence(__execution, __block)
+    --C.printf('  opt_samples =')
+    --for lvl = 0, NUM_LEVELS do
+    --  C.printf(' %d', opt_samples[lvl])
+    --end
+    --C.printf('\n')
+    --__fence(__execution, __block)
     -- Decide if we have converged.
     var opt_samples_ran = true
     for lvl = 0, NUM_LEVELS do

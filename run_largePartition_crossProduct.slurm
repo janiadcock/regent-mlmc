@@ -8,10 +8,10 @@
 #SBATCH --mail-user=janiad@stanford.edu # replace [sunetid] with your SUNetID
 
 #echo "Running [your app] with: $cmd on $SLURM_JOB_NODELIST in directory "'pwd'
-CC_FLAGS=-DLEGION_SPY
+
 NODES="1"
 CPUS="2"
-OUTPUT="convergence/mean_debug_spy_"$NODES"nodes_"$CPUS"cpu"
+OUTPUT="debug"
 
 export INCLUDE_PATH=.
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:."
@@ -32,4 +32,4 @@ gcc -Wall -Wextra -pedantic -g -fPIC -c diffusion.c
 gcc -shared -o libdiffusion.so diffusion.o
 rm -rf prof_*.log legion_prof/
 mkdir -p $OUTPUT
-mpiexec -np $NODES --map-by ppr:1:node --bind-to none "$LEGION_DIR"/language/regent.py mlmc.rg $LEGION_OPTS 2>$OUTPUT"/e.log" 1>$OUTPUT"/o.log"
+mpiexec -np $NODES --map-by ppr:1:node --bind-to none "$LEGION_DIR"/language/regent.py mlmc_largePartition_crossProduct.rg $LEGION_OPTS 2>$OUTPUT"/e.log" 1>$OUTPUT"/o.log"

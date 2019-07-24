@@ -34,10 +34,11 @@ local floor = regentlib.floor(double)
 local NUM_LEVELS = 3
 local NUM_UNCERTAINTIES = 1
 local SEED = 1237
-local MAX_SAMPLES_PER_LEVEL = 10000
+local MAX_SAMPLES_PER_LEVEL = 150
 local MAX_ITERS = 10
-local TOLERANCE = 0.0001
-local BATCH_SIZE = 100
+local TOLERANCE = 0.001
+local BATCH_SIZE = 10
+local NUM_BATCHES = MAX_SAMPLES_PER_LEVEL / BATCH_SIZE
 
 -- Enumeration of states that a sample can be in.
 local State = {
@@ -73,6 +74,7 @@ local fspace Sample {
   mesh_size_l_1 : int;
   uncertainties : double[NUM_UNCERTAINTIES];
   response : double;
+  count : int;
 }
 
 -- This task accepts an arbitrary-size collection of samples and computes the
@@ -144,6 +146,8 @@ end
 -------------------------------------------------------------------------------
 
 task main()
+
+  --C.printf('%d \n', NUM_BATCHES)
   __fence(__execution, __block)
   var t_start = regentlib.c.legion_get_current_time_in_micros()
   __fence(__execution, __block)
@@ -162,33 +166,56 @@ task main()
   var num_samples : int[NUM_LEVELS] = array(0,0,0)
   var y_mean : double[NUM_LEVELS]
   var y_var : double[NUM_LEVELS]
-  -- Region of samples
-  -- Index space: controls the number of "rows"; in this case each row is
-  -- indexed by a pair of integers, the first defining the level and the
-  -- second defining the sample index within that level, for a total of
-  -- NUM_LEVELS * MAX_SAMPLES_PER_LEVEL rows.
+  
   var index_space = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL})
   var samples = region(index_space, Sample)
   fill(samples.state, State.INACTIVE)
-  -- Split the region of samples into a disjoint set of sub-regions, such that
-  -- each of those sub-regions can be operated on independently from the rest.
-  -- The first partition splits the region into as many parts as it has
-  -- elements, therefore each sub-region will contain a single sample; this is
-  -- usually not ideal, because it means we will end up launching many tasks,
-  -- each doing very little work.
-  var color_space_fine = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL/BATCH_SIZE})
-  var p_samples_fine = partition(equal, samples, color_space_fine)
-  -- The same region can be partition in multiple ways; when switching from
-  -- using one partition to the other, the runtime will automatically check if
-  -- the two uses conflict with each other.
-  -- Our second partition splits the region by level; it splits its first
-  -- dimension (the level index) into NUM_LEVELS parts, and doesn't split its
-  -- second dimension. Therefore, there will be a total of NUM_LEVELS pieces:
-  -- {0,0} {1,0} ... {NUM_LEVELS-1,0}
-  var color_space_by_level = ispace(int2d,{NUM_LEVELS,1})
-  var p_samples_by_level = partition(equal, samples, color_space_by_level)
-  -- Main loop
+  
+  --color each sample by level
+  var colors_level = ispace(int2d, {x=3, y=1})
+  var coloring_level = regentlib.c.legion_domain_point_coloring_create()
+  for i_level = 0, NUM_LEVELS do
+    var range = rect2d{{i_level, 0}, {i_level, MAX_SAMPLES_PER_LEVEL-1}}
+    regentlib.c.legion_domain_point_coloring_color_domain(coloring_level, int2d{i_level,0}, range)
+  end
+  var p_samples_by_level = partition(disjoint, samples, coloring_level, colors_level)
+  regentlib.c.legion_domain_point_coloring_destroy(coloring_level)
 
+  --color each sample by batch
+  var colors_batch = ispace(int2d, {x=1, y=NUM_BATCHES})
+  var coloring_batch = regentlib.c.legion_domain_point_coloring_create()
+  for i_batch = 0, NUM_BATCHES do
+    var lo = i_batch*BATCH_SIZE
+    var hi = (i_batch+1)*BATCH_SIZE - 1
+    var range = rect2d{{0,lo}, {NUM_LEVELS-1,hi}}
+    regentlib.c.legion_domain_point_coloring_color_domain(coloring_batch, int2d{0,i_batch}, range)
+  end
+  var p_samples_by_batch = partition(disjoint, samples, coloring_batch, colors_batch)
+  regentlib.c.legion_domain_point_coloring_destroy(coloring_batch)
+
+  var p_samples_fine = cross_product(p_samples_by_level, p_samples_by_batch)
+
+  ----Access each location through the cross product
+  for i_lvl in colors_level do
+    C.printf('i_lvl {%d, %d}\n', i_lvl.x, i_lvl.y)
+    var p_lvl = p_samples_fine[i_lvl]
+    for i_batch in colors_batch do
+      C.printf('  i_batch {%d, %d}\n', i_batch.x, i_batch.y)
+      var p_lvl_batch = p_lvl[i_batch]
+      for i in p_lvl_batch do
+        p_lvl_batch[i].count += 1
+        C.printf('    i {%d, %d}, count %d\n', i.x, i.y, p_lvl_batch[i].count)
+      end
+    end
+    C.printf('\n')
+  end
+
+  --var color_space_fine = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL/BATCH_SIZE})
+  --var p_samples_fine = partition(equal, samples, color_space_fine)
+  --var color_space_by_level = ispace(int2d,{NUM_LEVELS,1})
+  --var p_samples_by_level = partition(equal, samples, color_space_by_level)
+
+  -- Main loop 
   --If reading in uncertainties from file
   var f : &C.FILE
   f = C.fopen("uncertainties.txt", "rb")
@@ -218,12 +245,16 @@ task main()
  --   C.printf('%f \n', mass_x)
  --   --C.printf(C.fgets(line, 1024, fp))
  --   --var u = C.fgets(line, fp)
- --   --C.printf('%f \n', C.fgets(line, fp))
+ --   --C.pintf('%f \n', C.fgets(line, fp))
  -- end
  -- C.fclose(fp)
 
   var iter_print = 0
   for iter = 0, MAX_ITERS do
+    __fence(__execution, __block)
+    C.printf('iteration %d\n', iter)
+    __fence(__execution, __block)
+
     -- Run remaining samples for all levels.
     for lvl = 0, NUM_LEVELS do
       for i = num_samples[lvl], opt_samples[lvl] do
@@ -259,6 +290,7 @@ task main()
       --C.printf('i_batch_start %d \n', i_batch_start)
       --C.printf('i_batch_end %d \n', i_batch_end)
       --__fence(__execution, __block)
+      __demand(__parallel)
       for i_batch = i_batch_start, i_batch_end do
         --__fence(__execution, __block)
         --C.printf('i_batch: %d \n', i_batch)
@@ -270,7 +302,10 @@ task main()
         -- all tasks launched before it. It will conclude that the new task is
         -- independent from all the others, and thus can be queued to run
         -- immediately.
-        eval_samples(p_samples_fine[{lvl,i_batch}])
+        --__fence(__execution, __block)
+        --C.printf('lvl {%d, %d}, i_batch {%d, %d}\n', int2d{lvl,0}.x, int2d{lvl,0}.y, int2d{0,i_batch}.x, int2d{0,i_batch}.y)
+        --__fence(__execution, __block)
+        eval_samples(p_samples_fine[int2d{lvl,0}][int2d{0,i_batch}])
       end
       --__fence(__execution, __block)
       --C.printf('level: %d \n', lvl)
@@ -305,7 +340,7 @@ task main()
                        'Please increase MAX_SAMPLES_PER_LEVEL')
     end
     -- Print output.
-    --__fence(__execution, __block)
+    __fence(__execution, __block)
     --C.printf('Iteration %d:\n', iter)
     --C.printf('  y_costs =')
     --for lvl = 0, NUM_LEVELS do
@@ -323,12 +358,12 @@ task main()
     --  C.printf(' %e', y_var[lvl])
     --end
     --C.printf('\n')
-    --C.printf('  opt_samples =')
-    --for lvl = 0, NUM_LEVELS do
-    --  C.printf(' %d', opt_samples[lvl])
-    --end
-    --C.printf('\n')
-    --__fence(__execution, __block)
+    C.printf('  opt_samples =')
+    for lvl = 0, NUM_LEVELS do
+      C.printf(' %d', opt_samples[lvl])
+    end
+    C.printf('\n')
+    __fence(__execution, __block)
     -- Decide if we have converged.
     var opt_samples_ran = true
     for lvl = 0, NUM_LEVELS do

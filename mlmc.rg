@@ -33,9 +33,9 @@ local ceil = regentlib.ceil(double)
 local NUM_LEVELS = 3
 local NUM_UNCERTAINTIES = 1
 local SEED = 1237
-local MAX_SAMPLES_PER_LEVEL = 1000
+local MAX_SAMPLES_PER_LEVEL = 100
 local MAX_ITERS = 10
-local TOLERANCE = 0.001
+local TOLERANCE = 0.01
 
 -- Enumeration of states that a sample can be in.
 local State = {
@@ -140,7 +140,7 @@ task main()
   -- Initialize RNG.
   C.srand48(SEED)
   -- Inputs
-  var opt_samples : int[NUM_LEVELS] = array(100,100,100)
+  var opt_samples : int[NUM_LEVELS] = array(10,10,10)
   var mesh_sizes : int[NUM_LEVELS] = array(3, 5, 9)
   var q_costs : double[NUM_LEVELS] = array(1.0,2.0,4.0)
   var y_costs : double[NUM_LEVELS] =

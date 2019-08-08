@@ -34,10 +34,10 @@ local floor = regentlib.floor(double)
 local NUM_LEVELS = 3
 local NUM_UNCERTAINTIES = 1
 local SEED = 1237
-local MAX_SAMPLES_PER_LEVEL = 10000
+local MAX_SAMPLES_PER_LEVEL = 100
 local MAX_ITERS = 10
-local TOLERANCE = 0.0001
-local BATCH_SIZE = 1000
+local TOLERANCE = 0.01
+local BATCH_SIZE = 2
 local NUM_BATCHES = MAX_SAMPLES_PER_LEVEL / BATCH_SIZE
 
 -- Enumeration of states that a sample can be in.
@@ -155,7 +155,7 @@ task main()
   -- Initialize RNG.
   C.srand48(SEED)
   -- Inputs
-  var opt_samples : int[NUM_LEVELS] = array(1000,1000,1000)
+  var opt_samples : int[NUM_LEVELS] = array(10,10,10)
   var mesh_sizes : int[NUM_LEVELS] = array(3, 5, 9)
   var q_costs : double[NUM_LEVELS] = array(1.0,2.0,4.0)
   var y_costs : double[NUM_LEVELS] =

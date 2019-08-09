@@ -1,0 +1,32 @@
+level	start	end	color	opacity	title	initiation	in	out	children	parents	prof_uid
+3	43306	56740	#00ff42	1.0	Partition By Field	10					293
+3	56774	56811	#00ff42	1.0	Partition By Field	16					294
+3	56818	63979	#00ff42	1.0	Partition By Image Range	11					295
+3	64000	64054	#00ff42	1.0	Partition By Image Range	17					296
+3	64077	64176	#8500ff	1.0	Intersections	21					297
+3	64405	64459	#8500ff	1.0	Intersections	21					298
+3	64651	64704	#8500ff	1.0	Intersections	21					299
+3	90391	90399	#000000	1.0	Intersection						1228
+3	90420	90421	#000000	1.0	Intersection						1229
+3	90426	90426	#000000	1.0	Intersection						1230
+3	90429	90430	#000000	1.0	Intersection						1231
+3	90439	90439	#000000	1.0	Intersection						1232
+3	90442	90443	#000000	1.0	Intersection						1233
+3	90446	90446	#000000	1.0	Intersection						1234
+3	90449	90450	#000000	1.0	Intersection						1235
+3	131636	131638	#000000	1.0	Intersection						1236
+3	131647	131647	#000000	1.0	Intersection						1237
+3	131651	131651	#000000	1.0	Intersection						1238
+3	131654	131654	#000000	1.0	Intersection						1239
+3	131657	131657	#000000	1.0	Intersection						1240
+3	131660	131660	#000000	1.0	Intersection						1241
+3	131663	131663	#000000	1.0	Intersection						1242
+3	131666	131667	#000000	1.0	Intersection						1243
+3	133471	133473	#000000	1.0	Intersection						300
+3	133486	133487	#000000	1.0	Intersection						301
+3	133491	133491	#000000	1.0	Intersection						302
+3	133495	133495	#000000	1.0	Intersection						303
+3	133499	133499	#000000	1.0	Intersection						304
+3	133503	133504	#000000	1.0	Intersection						305
+3	133507	133508	#000000	1.0	Intersection						306
+3	133511	133511	#000000	1.0	Intersection						307

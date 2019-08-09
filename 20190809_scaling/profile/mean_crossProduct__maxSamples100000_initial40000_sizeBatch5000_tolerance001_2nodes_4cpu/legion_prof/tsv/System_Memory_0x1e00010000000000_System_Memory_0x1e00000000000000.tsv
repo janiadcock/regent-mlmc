@@ -1,0 +1,13 @@
+level	start	end	color	opacity	title	initiation	in	out	children	parents	prof_uid
+4	317634	318241	#ff002c	1.0	Copy size=5000	72					5251
+3	317660	318290	#ff002c	1.0	Copy size=5000	72					5252
+2	317714	318268	#ff002c	1.0	Copy size=5000	72					150
+1	317755	318299	#ff002c	1.0	Copy size=5000	72					4546
+4	328335	328940	#ff002c	1.0	Copy size=5000	150					5256
+3	328363	328965	#ff002c	1.0	Copy size=5000	150					4551
+2	328436	328949	#ff002c	1.0	Copy size=5000	150					4550
+1	328541	328928	#ff002c	1.0	Copy size=5000	150					4549
+4	341987	342517	#ff002c	1.0	Copy size=5000	156					4116
+3	341994	342562	#ff002c	1.0	Copy size=5000	156					4117
+2	342061	342533	#ff002c	1.0	Copy size=5000	156					1321
+1	342120	342502	#ff002c	1.0	Copy size=5000	156					4557

@@ -1,0 +1,102 @@
+op_id	desc	proc	level
+0	Operation <0>		
+1	__dummy <1>	CPU Processor 0x1d00010000000003	2
+2	main <2>	CPU Processor 0x1d00000000000004	2
+3	__dummy <3>	CPU Processor 0x1d00010000000002	2
+5	__dummy <5>	CPU Processor 0x1d00010000000006	2
+6	Fence Operation <6>		
+8	__dummy <8>	CPU Processor 0x1d00000000000005	2
+10	Fence Operation <10>		
+12	__dummy <12>	CPU Processor 0x1d00000000000003	2
+14	Mapping Operation <14>		
+16	Fill Operation <16>		
+18	Color Rects <2,2> <18>	CPU Processor 0x1d00000000000006	2
+20	Dependent Partition Operation <20>		
+22	Dependent Partition Operation <22>		
+24	Deletion Operation <24>		
+26	Deletion Operation <26>		
+28	Deletion Operation <28>		
+30	Color Rects <2,2> <30>	CPU Processor 0x1d00000000000008	2
+32	Dependent Partition Operation <32>		
+34	Dependent Partition Operation <34>		
+36	Deletion Operation <36>		
+38	Deletion Operation <38>		
+40	Deletion Operation <40>		
+42	Pending Partition Operation <42>		
+44	Mapping Operation <44>		
+46	eval_samples <46>		
+48	eval_samples <48>		
+50	eval_samples <50>		
+52	calc_mean <52>	CPU Processor 0x1d00000000000003	2
+54	Advance Operation <54>		
+56	Open Operation <56>		
+58	Open Operation <58>		
+60	Open Operation <60>		
+62	Advance Operation <62>		
+64	Open Operation <64>		
+66	Open Operation <66>		
+68	Advance Operation <68>		
+70	Open Operation <70>		
+72	Inter Close Operation <72>		
+74	eval_samples <74>		
+76	eval_samples <76>		
+78	eval_samples <78>		
+80	eval_samples <80>		
+82	eval_samples <82>		
+84	eval_samples <84>		
+86	eval_samples <86>		
+88	eval_samples <88>		
+90	eval_samples <90>		
+92	eval_samples <92>		
+94	eval_samples <94>		
+96	eval_samples <96>		
+98	eval_samples <98>		
+100	eval_samples <100>		
+102	eval_samples <102>		
+104	eval_samples <104>		
+106	eval_samples <106>		
+108	eval_samples <108>		
+110	eval_samples <110>		
+112	eval_samples <112>		
+114	eval_samples <114>		
+116	eval_samples <116>		
+118	eval_samples <118>		
+120	eval_samples <120>		
+122	eval_samples <122>	CPU Processor 0x1d00000000000003	2
+124	eval_samples <124>	CPU Processor 0x1d00000000000001	2
+126	eval_samples <126>	CPU Processor 0x1d00000000000008	2
+128	eval_samples <128>	CPU Processor 0x1d00000000000005	2
+130	eval_samples <130>	CPU Processor 0x1d00000000000004	3
+132	eval_samples <132>	CPU Processor 0x1d00000000000002	2
+134	eval_samples <134>	CPU Processor 0x1d00000000000007	2
+136	eval_samples <136>	CPU Processor 0x1d00000000000006	2
+138	eval_samples <138>	CPU Processor 0x1d00000000000003	2
+140	eval_samples <140>	CPU Processor 0x1d00000000000005	2
+142	eval_samples <142>	CPU Processor 0x1d00000000000008	2
+144	eval_samples <144>	CPU Processor 0x1d00000000000001	2
+146	eval_samples <146>	CPU Processor 0x1d00000000000004	3
+148	eval_samples <148>	CPU Processor 0x1d00000000000007	2
+150	eval_samples <150>	CPU Processor 0x1d00000000000002	2
+152	eval_samples <152>	CPU Processor 0x1d00000000000006	2
+154	eval_samples <154>	CPU Processor 0x1d00000000000003	2
+156	eval_samples <156>	CPU Processor 0x1d00000000000008	2
+158	eval_samples <158>	CPU Processor 0x1d00000000000005	2
+160	eval_samples <160>	CPU Processor 0x1d00000000000001	2
+162	eval_samples <162>	CPU Processor 0x1d00000000000004	3
+164	eval_samples <164>	CPU Processor 0x1d00000000000007	2
+166	eval_samples <166>	CPU Processor 0x1d00000000000002	2
+168	eval_samples <168>	CPU Processor 0x1d00000000000006	2
+170	calc_var <170>	CPU Processor 0x1d00000000000003	2
+172	calc_mean <172>	CPU Processor 0x1d00000000000003	2
+174	Inter Close Operation <174>		
+176	calc_var <176>	CPU Processor 0x1d00000000000003	2
+178	calc_mean <178>	CPU Processor 0x1d00000000000003	2
+180	Inter Close Operation <180>		
+182	calc_var <182>	CPU Processor 0x1d00000000000003	2
+184	Fence Operation <184>		
+186	Task Operation <186>		
+188	Fence Operation <188>		
+190	Task Operation <190>		
+192	Fence Operation <192>		
+194	Task Operation <194>		
+196	Deletion Operation <196>		

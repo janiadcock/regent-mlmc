@@ -1,0 +1,143 @@
+level	start	end	color	opacity	title	initiation	in	out	children	parents	prof_uid
+2	15379	15410	#FFC0CB	1.0	ProfTask <2>						154
+2	15758	15928	#ff001d	1.0	main <2>						4305
+2	15928	16558	#ff001d	0.15	main <2> (waiting)						4305
+2	16558	16587	#ff001d	0.45	main <2> (ready)						4305
+2	16587	16635	#ff001d	1.0	main <2>						4305
+2	16635	16856	#ff001d	0.15	main <2> (waiting)						4305
+2	16856	16867	#ff001d	0.45	main <2> (ready)						4305
+2	16867	17388	#ff001d	1.0	main <2>						4305
+2	17388	25713	#ff001d	0.15	main <2> (waiting)						4305
+2	25713	25755	#ff001d	0.45	main <2> (ready)						4305
+2	25755	268174	#ff001d	1.0	main <2>						4305
+2	268174	270128	#ff001d	0.15	main <2> (waiting)						4305
+2	270128	270139	#ff001d	0.45	main <2> (ready)						4305
+2	270139	272582	#ff001d	1.0	main <2>						4305
+2	272582	321410	#ff001d	0.15	main <2> (waiting)						4305
+2	321410	321421	#ff001d	0.45	main <2> (ready)						4305
+2	321421	321471	#ff001d	1.0	main <2>						4305
+2	321471	322198	#ff001d	0.15	main <2> (waiting)						4305
+2	322198	322212	#ff001d	0.45	main <2> (ready)						4305
+2	322212	322252	#ff001d	1.0	main <2>						4305
+2	322252	333424	#ff001d	0.15	main <2> (waiting)						4305
+2	333424	333461	#ff001d	0.45	main <2> (ready)						4305
+2	333461	333501	#ff001d	1.0	main <2>						4305
+2	333501	334465	#ff001d	0.15	main <2> (waiting)						4305
+2	334465	334475	#ff001d	0.45	main <2> (ready)						4305
+2	334475	334500	#ff001d	1.0	main <2>						4305
+2	334500	346844	#ff001d	0.15	main <2> (waiting)						4305
+2	346844	346861	#ff001d	0.45	main <2> (ready)						4305
+2	346861	346898	#ff001d	1.0	main <2>						4305
+2	346898	347806	#ff001d	0.15	main <2> (waiting)						4305
+2	347806	347822	#ff001d	0.45	main <2> (ready)						4305
+2	347822	347869	#ff001d	1.0	main <2>						4305
+2	347869	348154	#ff001d	0.15	main <2> (waiting)						4305
+2	348154	348167	#ff001d	0.45	main <2> (ready)						4305
+2	348167	348254	#ff001d	1.0	main <2>						4305
+2	348254	348587	#ff001d	0.15	main <2> (waiting)						4305
+2	348587	348597	#ff001d	0.45	main <2> (ready)						4305
+2	348597	348625	#ff001d	1.0	main <2>						4305
+2	348625	348872	#ff001d	0.15	main <2> (waiting)						4305
+2	348872	348879	#ff001d	0.45	main <2> (ready)						4305
+2	348879	348911	#ff001d	1.0	main <2>						4305
+1	16231	16234	#FFC0CB	1.0	ProfTask <6>						156
+1	16387	16392	#FFC0CB	1.0	ProfTask <6>						158
+1	16437	16439	#FFC0CB	1.0	ProfTask <8>						160
+1	16491	16500	#FFC0CB	1.0	ProfTask <8>						162
+1	16528	16529	#FFC0CB	1.0	ProfTask <8>						164
+1	16687	16689	#FFC0CB	1.0	ProfTask <8>						166
+1	16715	16716	#FFC0CB	1.0	ProfTask <10>						168
+1	16731	16732	#FFC0CB	1.0	ProfTask <10>						170
+1	16819	16829	#22ff00	1.0	__dummy <12>						39
+1	16837	16845	#FFC0CB	1.0	ProfTask <12>						172
+1	17436	17438	#FFC0CB	1.0	ProfTask <14>						174
+1	268199	268200	#FFC0CB	1.0	ProfTask <42>						176
+1	268204	268205	#FFC0CB	1.0	ProfTask <42>						178
+1	268288	268289	#FFC0CB	1.0	ProfTask <42>						180
+1	268304	268305	#FFC0CB	1.0	ProfTask <42>						182
+1	268350	268351	#FFC0CB	1.0	ProfTask <42>						184
+1	268372	268380	#FFC0CB	1.0	ProfTask <42>						186
+1	268383	268384	#FFC0CB	1.0	ProfTask <42>						188
+1	268470	268471	#FFC0CB	1.0	ProfTask <36>						190
+1	268556	268557	#FFC0CB	1.0	ProfTask <44>						192
+1	268645	268646	#FFC0CB	1.0	ProfTask <18>						194
+1	268704	268705	#FFC0CB	1.0	ProfTask <30>						196
+1	269139	269140	#FFC0CB	1.0	ProfTask <44>						198
+1	269320	269321	#FFC0CB	1.0	ProfTask <38>						200
+1	269360	269361	#FFC0CB	1.0	ProfTask <40>						202
+1	269671	269672	#FFC0CB	1.0	ProfTask <44>						204
+1	272720	272727	#FFC0CB	1.0	ProfTask <46>						206
+1	272765	272766	#FFC0CB	1.0	ProfTask <56>						208
+1	272788	272789	#FFC0CB	1.0	ProfTask <58>						210
+1	273120	273121	#FFC0CB	1.0	ProfTask <48>						212
+1	273213	273214	#FFC0CB	1.0	ProfTask <50>						214
+1	273239	273240	#FFC0CB	1.0	ProfTask <60>						216
+1	273261	273268	#FFC0CB	1.0	ProfTask <64>						218
+1	273298	273299	#FFC0CB	1.0	ProfTask <66>						220
+1	273318	273319	#FFC0CB	1.0	ProfTask <70>						222
+1	273335	273336	#FFC0CB	1.0	ProfTask <46>						224
+1	273363	273363	#FFC0CB	1.0	ProfTask <62>						226
+1	273390	273392	#FFC0CB	1.0	ProfTask <68>						228
+1	273437	273439	#FFC0CB	1.0	ProfTask <52>						230
+1	274200	274201	#FFC0CB	1.0	ProfTask						232
+1	274264	274265	#FFC0CB	1.0	ProfTask						234
+1	274655	275982	#007eff	1.0	eval_samples <122>						381
+1	275992	279597	#007eff	1.0	eval_samples <130>						385
+1	279619	285655	#007eff	1.0	eval_samples <138>						41
+1	285663	285664	#FFC0CB	1.0	ProfTask <3>						236
+1	285666	285667	#FFC0CB	1.0	ProfTask <3>						238
+1	285669	285670	#FFC0CB	1.0	ProfTask <138>						240
+1	285811	285812	#FFC0CB	1.0	ProfTask <140>						242
+1	318065	318068	#FFC0CB	1.0	ProfTask <47>						244
+1	318081	318082	#FFC0CB	1.0	ProfTask <72>						246
+1	318103	318103	#FFC0CB	1.0	ProfTask <72>						248
+1	318278	318280	#FFC0CB	1.0	ProfTask <47>						250
+1	318305	318305	#FFC0CB	1.0	ProfTask <72>						252
+1	318447	318448	#FFC0CB	1.0	ProfTask <47>						254
+1	321595	321597	#FFC0CB	1.0	ProfTask						256
+1	321726	322115	#ff000e	1.0	calc_var <146>						44
+1	322128	322130	#FFC0CB	1.0	ProfTask <146>						258
+1	322387	322389	#FFC0CB	1.0	ProfTask <150>						260
+1	323009	323011	#FFC0CB	1.0	ProfTask <150>						262
+1	323133	323133	#FFC0CB	1.0	ProfTask						264
+1	326035	326038	#FFC0CB	1.0	ProfTask						266
+1	326729	326730	#FFC0CB	1.0	ProfTask						268
+1	327229	327231	#FFC0CB	1.0	ProfTask						270
+1	327974	327976	#FFC0CB	1.0	ProfTask						272
+1	333574	333584	#FFC0CB	1.0	ProfTask <152>						274
+1	333658	333661	#FFC0CB	1.0	ProfTask <152>						276
+1	334578	334580	#FFC0CB	1.0	ProfTask <154>						278
+1	334613	334616	#FFC0CB	1.0	ProfTask <156>						280
+1	335189	335191	#FFC0CB	1.0	ProfTask <156>						282
+1	335200	335201	#FFC0CB	1.0	ProfTask <156>						284
+1	335228	335231	#FFC0CB	1.0	ProfTask <156>						286
+1	335264	335280	#FFC0CB	1.0	ProfTask <156>						288
+1	335317	335319	#FFC0CB	1.0	ProfTask						290
+1	337141	337145	#FFC0CB	1.0	ProfTask <156>						292
+1	337741	337745	#FFC0CB	1.0	ProfTask <156>						294
+1	339113	339117	#FFC0CB	1.0	ProfTask <156>						296
+1	340992	340994	#FFC0CB	1.0	ProfTask <154>						298
+1	341459	341461	#FFC0CB	1.0	ProfTask <53>						300
+1	347030	347032	#FFC0CB	1.0	ProfTask <158>						302
+1	347922	347925	#FFC0CB	1.0	ProfTask <160>						304
+1	347931	347932	#FFC0CB	1.0	ProfTask <160>						306
+1	348530	348533	#FFC0CB	1.0	ProfTask <166>						308
+1	348871	348874	#FFC0CB	1.0	ProfTask <170>						310
+2	354517	354522	#FFC0CB	1.0	ProfTask <2>						312
+2	354898	354900	#FFC0CB	1.0	ProfTask <172>						314
+2	354963	354965	#FFC0CB	1.0	ProfTask <172>						316
+2	357960	357963	#FFC0CB	1.0	ProfTask						318
+2	359599	359601	#FFC0CB	1.0	ProfTask						320
+2	361542	361543	#FFC0CB	1.0	ProfTask						322
+2	361555	361557	#FFC0CB	1.0	ProfTask						324
+2	363979	363981	#FFC0CB	1.0	ProfTask						326
+2	364008	364009	#FFC0CB	1.0	ProfTask						328
+2	364411	364413	#FFC0CB	1.0	ProfTask						330
+2	364465	364466	#FFC0CB	1.0	ProfTask						332
+2	364511	364513	#FFC0CB	1.0	ProfTask						334
+2	364525	364526	#FFC0CB	1.0	ProfTask						336
+2	364585	364586	#FFC0CB	1.0	ProfTask						338
+2	364594	364595	#FFC0CB	1.0	ProfTask						340
+2	364671	364672	#FFC0CB	1.0	ProfTask						342
+2	366402	366404	#FFC0CB	1.0	ProfTask						344
+2	366453	366454	#FFC0CB	1.0	ProfTask						346

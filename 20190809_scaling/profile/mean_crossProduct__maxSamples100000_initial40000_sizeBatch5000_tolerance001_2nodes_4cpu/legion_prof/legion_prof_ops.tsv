@@ -1,0 +1,115 @@
+op_id	desc	proc	level
+0	Operation <0>		
+1	eval_samples <1>		
+2	main <2>	CPU Processor 0x1d00000000000001	2
+3	eval_samples <3>		
+5	eval_samples <5>		
+6	Fence Operation <6>		
+7	eval_samples <7>		
+8	__dummy <8>	CPU Processor 0x1d00000000000002	2
+9	eval_samples <9>		
+10	Fence Operation <10>		
+11	eval_samples <11>		
+12	__dummy <12>	CPU Processor 0x1d00000000000001	3
+13	eval_samples <13>		
+14	Mapping Operation <14>		
+15	eval_samples <15>		
+16	Fill Operation <16>		
+17	eval_samples <17>		
+18	Color Rects <2,2> <18>	CPU Processor 0x1d00000000000003	2
+19	eval_samples <19>		
+20	Dependent Partition Operation <20>		
+21	eval_samples <21>		
+22	Dependent Partition Operation <22>		
+23	eval_samples <23>		
+24	Deletion Operation <24>		
+25	eval_samples <25>	CPU Processor 0x1d00010000000002	2
+26	Deletion Operation <26>		
+27	eval_samples <27>	CPU Processor 0x1d00010000000002	2
+28	Deletion Operation <28>		
+29	eval_samples <29>	CPU Processor 0x1d00010000000004	2
+30	Color Rects <2,2> <30>	CPU Processor 0x1d00000000000002	2
+31	eval_samples <31>	CPU Processor 0x1d00010000000002	2
+32	Dependent Partition Operation <32>		
+33	eval_samples <33>	CPU Processor 0x1d00010000000002	2
+34	Dependent Partition Operation <34>		
+35	eval_samples <35>	CPU Processor 0x1d00010000000001	2
+36	Deletion Operation <36>		
+37	eval_samples <37>	CPU Processor 0x1d00010000000003	2
+38	Deletion Operation <38>		
+39	eval_samples <39>	CPU Processor 0x1d00010000000001	2
+40	Deletion Operation <40>		
+41	eval_samples <41>	CPU Processor 0x1d00010000000001	2
+42	Pending Partition Operation <42>		
+43	eval_samples <43>	CPU Processor 0x1d00010000000004	2
+44	Mapping Operation <44>		
+45	eval_samples <45>	CPU Processor 0x1d00010000000004	2
+46	eval_samples <46>		
+47	eval_samples <47>	CPU Processor 0x1d00010000000003	2
+48	eval_samples <48>		
+49	calc_mean <49>	CPU Processor 0x1d00010000000004	2
+50	Advance Operation <50>		
+51	calc_var <51>	CPU Processor 0x1d00010000000003	2
+52	eval_samples <52>		
+53	calc_mean <53>	CPU Processor 0x1d00010000000002	2
+54	calc_mean <54>	CPU Processor 0x1d00000000000003	2
+55	calc_var <55>	CPU Processor 0x1d00010000000002	2
+56	Open Operation <56>		
+58	Open Operation <58>		
+60	Open Operation <60>		
+62	Advance Operation <62>		
+64	Open Operation <64>		
+66	Open Operation <66>		
+68	Advance Operation <68>		
+70	Open Operation <70>		
+72	Inter Close Operation <72>		
+74	eval_samples <74>		
+76	eval_samples <76>		
+78	eval_samples <78>		
+80	eval_samples <80>		
+82	eval_samples <82>		
+84	eval_samples <84>		
+86	eval_samples <86>		
+88	eval_samples <88>		
+90	eval_samples <90>		
+92	eval_samples <92>		
+94	eval_samples <94>		
+96	eval_samples <96>		
+98	eval_samples <98>		
+100	eval_samples <100>		
+102	eval_samples <102>		
+104	eval_samples <104>		
+106	eval_samples <106>		
+108	eval_samples <108>		
+110	eval_samples <110>		
+112	eval_samples <112>		
+114	eval_samples <114>		
+116	eval_samples <116>		
+118	eval_samples <118>		
+120	eval_samples <120>		
+122	eval_samples <122>	CPU Processor 0x1d00000000000001	3
+124	eval_samples <124>	CPU Processor 0x1d00000000000003	2
+126	eval_samples <126>	CPU Processor 0x1d00000000000002	2
+128	eval_samples <128>	CPU Processor 0x1d00000000000004	2
+130	eval_samples <130>	CPU Processor 0x1d00000000000001	3
+132	eval_samples <132>	CPU Processor 0x1d00000000000003	2
+134	eval_samples <134>	CPU Processor 0x1d00000000000002	2
+136	eval_samples <136>	CPU Processor 0x1d00000000000004	2
+138	eval_samples <138>	CPU Processor 0x1d00000000000001	3
+140	eval_samples <140>	CPU Processor 0x1d00000000000003	2
+142	eval_samples <142>	CPU Processor 0x1d00000000000004	2
+144	eval_samples <144>	CPU Processor 0x1d00000000000002	2
+146	calc_var <146>	CPU Processor 0x1d00000000000001	3
+148	Task Operation <148>		
+150	Inter Close Operation <150>		
+152	Task Operation <152>		
+154	Task Operation <154>		
+156	Inter Close Operation <156>		
+158	Task Operation <158>		
+160	Fence Operation <160>		
+162	__dummy <162>	CPU Processor 0x1d00000000000003	2
+164	Fence Operation <164>		
+166	__dummy <166>	CPU Processor 0x1d00000000000003	2
+168	Fence Operation <168>		
+170	__dummy <170>	CPU Processor 0x1d00000000000003	2
+172	Deletion Operation <172>		

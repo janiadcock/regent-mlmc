@@ -24,7 +24,7 @@ local NUM_UNCERTAINTIES = 1
 local SEED = 1237
 local MAX_SAMPLES_PER_LEVEL = 100000
 local MAX_ITERS = 10
-local TOLERANCE = 0.0001
+local TOLERANCE = 0.001
 local BATCH_SIZE = 5000
 local NUM_BATCHES = MAX_SAMPLES_PER_LEVEL / BATCH_SIZE
 
@@ -35,7 +35,7 @@ local State = {
   COMPLETED = 2,
 }
 
-local NUM_U_INPUT = 200000
+--local NUM_U_INPUT = 200000
 
 -- Functions to read in uncertainties from file
 -- terra read_header(f : &C.FILE)
@@ -69,10 +69,16 @@ local task eval_samples(samples : region(ispace(int2d),Sample))
 where
   reads(samples.{level, mesh_size_l, mesh_size_l_1, uncertainties}),
   writes(samples.response),
-  reads writes(samples.state)
+  reads writes(samples.state, samples.count)
 do
   for s in samples do
     if s.state == State.ACTIVE then
+
+      -- DEBUG
+      --s.count += 1
+      --regentlib.assert(s.count == 2, 'evaluated wrong number of times')
+      --C.printf('lvl %d, uncertainty %e, count %d\n', s.level, s.uncertainties[0], s.count)
+
       -- Run the simulation once or twice, depending on the sample's level.
       if s.level > 0 then
         var q_l =
@@ -131,7 +137,7 @@ task main()
   __fence(__execution, __block)
 
   -- initialize random seed for uncertain parameter (if not reading inputs from file)
-  --C.srand48(SEED)
+  C.srand48(SEED)
 
   -- Inputs
   var opt_samples : int[NUM_LEVELS] = array(40000,40000,40000)
@@ -151,6 +157,7 @@ task main()
   var index_space = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL})
   var samples = region(index_space, Sample)
   fill(samples.state, State.INACTIVE)
+  fill(samples.count, 0)
   
   --color each sample by level
   var colors_level = ispace(int2d, {x=3, y=1})
@@ -227,6 +234,12 @@ task main()
         for j = 0, NUM_UNCERTAINTIES do
           -- C.drand48() if generating random parameters here; line below if reading in from input file
           samples[{lvl,i}].uncertainties[j] = C.drand48()
+
+          -- DEBUG
+          --samples[{lvl, i}].count += 1
+          --regentlib.assert(samples[{lvl, i}].count == 1, 'sample repeated')
+          --C.printf('lvl %d, i %d, uncertainty %e\n', lvl, i, samples[{lvl, i}].uncertainties[j])
+
           --samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
         end
       end
@@ -271,8 +284,8 @@ task main()
     end
     -- Update estimates for central moments.
     for lvl = 0, NUM_LEVELS do
-      y_mean[lvl] = calc_mean(p_samples_by_level[{lvl,0}])
-      y_var[lvl] = calc_var(p_samples_by_level[{lvl,0}], y_mean[lvl], num_samples[lvl])
+      y_mean[lvl] = calc_mean(p_samples_by_level[int2d{lvl,0}])
+      y_var[lvl] = calc_var(p_samples_by_level[int2d{lvl,0}], y_mean[lvl], num_samples[lvl])
       y_var[lvl] max= 0.0 
     end
     -- Update estimates for the optimal number of samples.

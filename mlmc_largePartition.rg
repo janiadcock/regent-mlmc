@@ -1,7 +1,7 @@
 import 'regent'
 
 -------------------------------------------------------------------------------
--- Imports
+-- import libraries and functions, define constants, define terra functions
 -------------------------------------------------------------------------------
 
 local C = terralib.includecstring[[
@@ -20,17 +20,13 @@ local sqrt = regentlib.sqrt(double)
 local ceil = regentlib.ceil(double)
 local floor = regentlib.floor(double)
 
--------------------------------------------------------------------------------
--- Constants, function to read in uncertain parameter, 
--------------------------------------------------------------------------------
-
 local NUM_LEVELS = 3
 local NUM_UNCERTAINTIES = 1
 local SEED = 1237
-local MAX_SAMPLES_PER_LEVEL = 10000
+local MAX_SAMPLES_PER_LEVEL = 100000
 local MAX_ITERS = 10
-local TOLERANCE = 0.0001
-local BATCH_SIZE = 100
+local TOLERANCE = 0.001
+local BATCH_SIZE = 5000
 
 -- Enumeration of states that a sample can be in.
 local State = {
@@ -39,19 +35,17 @@ local State = {
   COMPLETED = 2,
 }
 
-local NUM_U_INPUT = 9000
--------------------------------------------------------------------------------
--- Tools to read in uncertainties from file
+--local NUM_U_INPUT = 20000
 
-terra read_header(f : &C.FILE)
-  var x: uint64
-  return C.fscanf(f, "%llu\n", &x)
-end
-
-terra read_line(f : &C.FILE, value : &double)
-  return C.fscanf(f, "%lf\n", &value[0]) == 1
-end
--------------------------------------------------------------------------------
+-- Functions to read in uncertainties from file
+-- terra read_header(f : &C.FILE)
+--   var x: uint64
+--   return C.fscanf(f, "%llu\n", &x)
+-- end
+-- 
+-- terra read_line(f : &C.FILE, value : &double)
+--   return C.fscanf(f, "%lf\n", &value[0]) == 1
+-- end
 
 -------------------------------------------------------------------------------
 -- Tasks
@@ -133,6 +127,7 @@ do
   return acc/num_samples-pow(mean,2)
 end
 
+-------------------------------------------------------------------------------
 -- Main
 -------------------------------------------------------------------------------
 
@@ -141,16 +136,18 @@ task main()
   var t_start = regentlib.c.legion_get_current_time_in_micros()
   __fence(__execution, __block)
 
-  -- Initialize RNG.
+  -- initialize random seed for uncertaint parameter (if not reading input from file)
   C.srand48(SEED)
+
   -- Inputs
-  var opt_samples : int[NUM_LEVELS] = array(100,100,100)
+  var opt_samples : int[NUM_LEVELS] = array(40000,40000,40000)
   var mesh_sizes : int[NUM_LEVELS] = array(3, 5, 9)
   var q_costs : double[NUM_LEVELS] = array(1.0,2.0,4.0)
   var y_costs : double[NUM_LEVELS] =
     array(q_costs[0],
           q_costs[1],
           q_costs[2])
+
   -- Algorithm state
   var num_samples : int[NUM_LEVELS] = array(0,0,0)
   var y_mean : double[NUM_LEVELS]
@@ -158,66 +155,28 @@ task main()
   var i_batch_start : int[NUM_LEVELS] = array(0,0,0)
   var i_batch_end : int[NUM_LEVELS] = array(0,0,0)
 
-  -- Region of samples
-  -- Index space: controls the number of "rows"; in this case each row is
-  -- indexed by a pair of integers, the first defining the level and the
-  -- second defining the sample index within that level, for a total of
-  -- NUM_LEVELS * MAX_SAMPLES_PER_LEVEL rows.
+  -- Define index space, region, and samples
   var index_space = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL})
   var samples = region(index_space, Sample)
   fill(samples.state, State.INACTIVE)
-  -- Split the region of samples into a disjoint set of sub-regions, such that
-  -- each of those sub-regions can be operated on independently from the rest.
-  -- The first partition splits the region into as many parts as it has
-  -- elements, therefore each sub-region will contain a single sample; this is
-  -- usually not ideal, because it means we will end up launching many tasks,
-  -- each doing very little work.
   var color_space_fine = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL/BATCH_SIZE})
   var p_samples_fine = partition(equal, samples, color_space_fine)
-  -- The same region can be partition in multiple ways; when switching from
-  -- using one partition to the other, the runtime will automatically check if
-  -- the two uses conflict with each other.
-  -- Our second partition splits the region by level; it splits its first
-  -- dimension (the level index) into NUM_LEVELS parts, and doesn't split its
-  -- second dimension. Therefore, there will be a total of NUM_LEVELS pieces:
-  -- {0,0} {1,0} ... {NUM_LEVELS-1,0}
   var color_space_by_level = ispace(int2d,{NUM_LEVELS,1})
   var p_samples_by_level = partition(equal, samples, color_space_by_level)
+
   -- Main loop
-
-  --If reading in uncertainties from file
-  var f : &C.FILE
-  f = C.fopen("uncertainties.txt", "rb")
-  read_header(f)
-  --regentlib.assert(read_header(f) == NUM_U_INPUT, "Input file wrong number of uncertainties.")
-  var uncertainties : double[NUM_U_INPUT]
-  for i=0, NUM_U_INPUT do
-    var value : double[1]
-    regentlib.assert(read_line(f, value), "Less data than expected")
-    uncertainties[i]=value[0]
-  end
-  C.fclose(f)
-  
-  --for i = 0, 10 do
-  --  C.printf("%f\n", uncertainties[i])
+  -- Read in uncertain parameters (if reading uncertainties from file)
+  --var f : &C.FILE
+  --f = C.fopen("uncertainties.txt", "rb")
+  --read_header(f)
+  --var uncertainties : double[NUM_U_INPUT]
+  --for i=0, NUM_U_INPUT do
+  --  var value : double[1]
+  --  regentlib.assert(read_line(f, value), "Less data than expected")
+  --  uncertainties[i]=value[0]
   --end
-
- -- var fp = C.fopen('rand_1000.csv', 1024, "r")
- -- var line : int8[1024]
- -- for i=0, 10 do
- --   C.fgets(line, 1024, fp)
- --   var index = C.atoi(C.strtok(line, ","))
- --   C.printf('%d \n', index)
- --   var mass_x = 0.0
- --   mass_x = C.atof(C.strtok([&int8](0), ","))
- --   C.printf('%d \n', i)
- --   C.printf('%f \n', mass_x)
- --   --C.printf(C.fgets(line, 1024, fp))
- --   --var u = C.fgets(line, fp)
- --   --C.printf('%f \n', C.fgets(line, fp))
- -- end
- -- C.fclose(fp)
-
+  --C.fclose(f)
+  
   var iter_print = 0
   for iter = 0, MAX_ITERS do
     -- Run remaining samples for all levels.
@@ -231,55 +190,32 @@ task main()
           samples[{lvl,i}].mesh_size_l_1 = mesh_sizes[lvl-1]
         end
         for j = 0, NUM_UNCERTAINTIES do
-          --samples[{lvl,i}].uncertainties[j] = .5
-          --samples[{lvl,i}].uncertainties[j] = C.drand48()
-          samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
+          samples[{lvl,i}].uncertainties[j] = C.drand48()
+          --samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
         end
       end
-      --want floor for i_batch_start, which is equivalent to casting to (int)
-      --want ceil for i_end but ceil returns double so manually do ceil
-      --(int) truncates and returns int
-      --can't use floor() and ceil() b/c returns double so can't iterate over; 
-      --if convert double with (int) get untyped which can't iterate over
+      -- type casting in the following lines necessary because:
+           -- want floor for i_batch_start, which is equivalent to casting to (int)
+           -- want ceil for i_end but ceil returns double so manually do ceil
+           -- (int) truncates and returns int
+           -- can't use floor() and ceil() b/c returns double so can't iterate over; 
+           -- if convert double with (int) get untyped which can't iterate over
       i_batch_start[lvl] = (int) ((double) (num_samples[lvl])/BATCH_SIZE)
       i_batch_end[lvl] = (int) ((double) (opt_samples[lvl])/BATCH_SIZE)
       if (double) (opt_samples[lvl])/BATCH_SIZE > i_batch_end[lvl] then
-        --C.printf('i_batch_end += 1 \n')
         i_batch_end[lvl] += 1
       end
-      __fence(__execution, __block)
-      C.printf('iterations = %d \n', iter_print+1)
-      C.printf('num_samples[lvl] %d \n', num_samples[lvl])
-      C.printf('opt_samples[lvl] %d \n', opt_samples[lvl])
-      C.printf('num_samples[lvl]/BATCH_SIZE %f \n', (double) (num_samples[lvl])/BATCH_SIZE)
-      C.printf('opt_samples[lvl]/BATCH_SIZE %f \n', (double) (opt_samples[lvl])/BATCH_SIZE)
-      C.printf('i_batch_start[lvl] %d \n', i_batch_start[lvl])
-      C.printf('i_batch_end[lvl] %d \n', i_batch_end[lvl])
-      __fence(__execution, __block)
     end
     for lvl = 0, NUM_LEVELS do
-      __demand(__parallel)
       for i_batch = i_batch_start[lvl], i_batch_end[lvl] do
         eval_samples(p_samples_fine[{lvl,i_batch}])
       end
     end
     for lvl = 0, NUM_LEVELS do
-      --__fence(__execution, __block)
-      --C.printf('level: %d \n', lvl)
-      --C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
       num_samples[lvl] max= opt_samples[lvl]
-      --C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
-      --C.printf('pre opt_samples[lvl]: %d \n', opt_samples[lvl])
-      --__fence(__execution, __block)
     end
     -- Update estimates for central moments.
     for lvl = 0, NUM_LEVELS do
-      -- At this point we switch to using the partition by level; the runtime
-      -- will analyze the dependencies and conclude that the call to
-      -- `calc_mean` has a read-after-write dependency with all the preceding
-      -- calls to `eval_samples` for samples on the same level. Therefore, the
-      -- execution of `calc_mean` will have to wait until those tasks have
-      -- completed (the main task is free to continue emitting tasks, however).
       y_mean[lvl] = calc_mean(p_samples_by_level[{lvl,0}])
       y_var[lvl] = calc_var(p_samples_by_level[{lvl,0}], y_mean[lvl], num_samples[lvl])
       y_var[lvl] max= 0.0 
@@ -296,7 +232,7 @@ task main()
       regentlib.assert(opt_samples[lvl] < MAX_SAMPLES_PER_LEVEL,
                        'Please increase MAX_SAMPLES_PER_LEVEL')
     end
-    -- Print output.
+    -- Print output for this iteration
     --__fence(__execution, __block)
     --C.printf('Iteration %d:\n', iter)
     --C.printf('  y_costs =')
@@ -321,6 +257,7 @@ task main()
     --end
     --C.printf('\n')
     --__fence(__execution, __block)
+
     -- Decide if we have converged.
     var opt_samples_ran = true
     for lvl = 0, NUM_LEVELS do

@@ -11,7 +11,7 @@
 
 NODES="1"
 CPUS="4"
-OUTPUT="debug/largePartition_profile_"$NODES"nodes_"$CPUS"cpu"
+OUTPUT="debug/largePartition_"$NODES"nodes_"$CPUS"cpu"
 
 export INCLUDE_PATH=.
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:."
@@ -23,8 +23,8 @@ LEGION_OPTS=
 # Reserve CPUs cores on each rank for running Legion tasks.
 LEGION_OPTS="$LEGION_OPTS -ll:cpu "$CPUS
 # Enable profiling output, for 1 rank.
-LEGION_OPTS="$LEGION_OPTS -lg:prof "$NODES
-LEGION_OPTS="$LEGION_OPTS -lg:prof_logfile "$OUTPUT"/prof_%.log"
+# LEGION_OPTS="$LEGION_OPTS -lg:prof "$NODES
+# LEGION_OPTS="$LEGION_OPTS -lg:prof_logfile "$OUTPUT"/prof_%.log"
 #LEGION_OPTS="$LEGION_OPTS -ll:show_rsrv"
 #LEGION_OPTS="$LEGION_OPTS -lg:spy -logfile "$OUTPUT"/spy_%.log "
 

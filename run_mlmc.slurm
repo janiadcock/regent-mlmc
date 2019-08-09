@@ -11,7 +11,7 @@
 #CC_FLAGS=-DLEGION_SPY
 NODES="1"
 CPUS="4"
-OUTPUT="scaling/spy_mlmc_"$NODES"nodes_"$CPUS"cpu"
+OUTPUT="debug/mlmc_"$NODES"nodes_"$CPUS"cpu"
 
 export INCLUDE_PATH=.
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:."
@@ -26,7 +26,7 @@ LEGION_OPTS="$LEGION_OPTS -ll:cpu "$CPUS
 #LEGION_OPTS="$LEGION_OPTS -lg:prof "$NODES
 #LEGION_OPTS="$LEGION_OPTS -lg:prof_logfile "$OUTPUT"/prof_%.log"
 #LEGION_OPTS="$LEGION_OPTS -ll:show_rsrv"
-LEGION_OPTS="$LEGION_OPTS -lg:spy -logfile "$OUTPUT"/spy_%.log "
+#LEGION_OPTS="$LEGION_OPTS -lg:spy -logfile "$OUTPUT"/spy_%.log "
 
 gcc -Wall -Wextra -pedantic -g -fPIC -c diffusion.c
 gcc -shared -o libdiffusion.so diffusion.o

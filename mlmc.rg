@@ -1,12 +1,9 @@
 import 'regent'
 
 -------------------------------------------------------------------------------
--- Imports
+-- import libraries and functions, define constants, define terra functions
 -------------------------------------------------------------------------------
 
--- These headers are parsed, and the symbols they define become available to
--- the code below. When the code is executed, these symbols will be looked up
--- in the set of linked files.
 local C = terralib.includecstring[[
 #include <math.h>
 #include <stdio.h>
@@ -14,21 +11,12 @@ local C = terralib.includecstring[[
 #include <string.h>
 ]]
 
--- Similar to above, we parse our simulation's header file to import the name
--- of our simulation kernel.
 local SIM = terralib.includec('diffusion.h')
--- We also dynamically link our simulation's code into the current process,
--- because by default the Regent compiler will compile our tasks and load them
--- into the current process to be executed.
 terralib.linklibrary('libdiffusion.so')
 
--- Load some built-in math functions.
 local pow = regentlib.pow(double)
 local sqrt = regentlib.sqrt(double)
 local ceil = regentlib.ceil(double)
--------------------------------------------------------------------------------
--- Constants & inputs
--------------------------------------------------------------------------------
 
 local NUM_LEVELS = 3
 local NUM_UNCERTAINTIES = 1
@@ -44,19 +32,17 @@ local State = {
   COMPLETED = 2,
 }
 
-local NUM_U_INPUT = 9000
--------------------------------------------------------------------------------
--- Tools to read in uncertainties from file
+-- local NUM_U_INPUT = 200000
 
-terra read_header(f : &C.FILE)
-  var x: uint64
-  return C.fscanf(f, "%llu\n", &x)
-end
-
-terra read_line(f : &C.FILE, value : &double)
-  return C.fscanf(f, "%lf\n", &value[0]) == 1
-end
--------------------------------------------------------------------------------
+-- Functions to read in uncertainties from file
+--terra read_header(f : &C.FILE)
+--  var x: uint64
+--  return C.fscanf(f, "%llu\n", &x)
+--end
+--
+--terra read_line(f : &C.FILE, value : &double)
+--  return C.fscanf(f, "%lf\n", &value[0]) == 1
+--end
 
 -------------------------------------------------------------------------------
 -- Tasks
@@ -84,6 +70,7 @@ do
   for s in samples do
     if s.state == State.ACTIVE then
       -- Run the simulation once or twice, depending on the sample's level.
+      C.printf('lvl %d, uncertainty %e\n', s.level, s.uncertainties[0])
       if s.level > 0 then
         var q_l =
           SIM.diffusion_1d(s.mesh_size_l, NUM_UNCERTAINTIES, s.uncertainties)
@@ -129,6 +116,7 @@ do
   return acc/num_samples-pow(mean,2)
 end
 
+-------------------------------------------------------------------------------
 -- Main
 -------------------------------------------------------------------------------
 
@@ -137,8 +125,9 @@ task main()
   var t_start = regentlib.c.legion_get_current_time_in_micros()
   __fence(__execution, __block)
 
-  -- Initialize RNG.
+  -- initialize random seed for uncertain parameter (if not reading inputs from file)
   C.srand48(SEED)
+
   -- Inputs
   var opt_samples : int[NUM_LEVELS] = array(10,10,10)
   var mesh_sizes : int[NUM_LEVELS] = array(3, 5, 9)
@@ -147,70 +136,34 @@ task main()
     array(q_costs[0],
           q_costs[1],
           q_costs[2])
+
   -- Algorithm state
   var num_samples : int[NUM_LEVELS] = array(0,0,0)
   var y_mean : double[NUM_LEVELS]
   var y_var : double[NUM_LEVELS]
-  -- Region of samples
-  -- Index space: controls the number of "rows"; in this case each row is
-  -- indexed by a pair of integers, the first defining the level and the
-  -- second defining the sample index within that level, for a total of
-  -- NUM_LEVELS * MAX_SAMPLES_PER_LEVEL rows.
+
+  -- Define index space, region, and partitions
   var index_space = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL})
   var samples = region(index_space, Sample)
   fill(samples.state, State.INACTIVE)
-  -- Split the region of samples into a disjoint set of sub-regions, such that
-  -- each of those sub-regions can be operated on independently from the rest.
-  -- The first partition splits the region into as many parts as it has
-  -- elements, therefore each sub-region will contain a single sample; this is
-  -- usually not ideal, because it means we will end up launching many tasks,
-  -- each doing very little work.
   var color_space_fine = ispace(int2d,{NUM_LEVELS,MAX_SAMPLES_PER_LEVEL})
   var p_samples_fine = partition(equal, samples, color_space_fine)
-  -- The same region can be partition in multiple ways; when switching from
-  -- using one partition to the other, the runtime will automatically check if
-  -- the two uses conflict with each other.
-  -- Our second partition splits the region by level; it splits its first
-  -- dimension (the level index) into NUM_LEVELS parts, and doesn't split its
-  -- second dimension. Therefore, there will be a total of NUM_LEVELS pieces:
-  -- {0,0} {1,0} ... {NUM_LEVELS-1,0}
   var color_space_by_level = ispace(int2d,{NUM_LEVELS,1})
   var p_samples_by_level = partition(equal, samples, color_space_by_level)
+
   -- Main loop
-
-  --If reading in uncertainties from file
-  var f : &C.FILE
-  f = C.fopen("uncertainties.txt", "rb")
-  read_header(f)
-  --regentlib.assert(read_header(f) == NUM_U_INPUT, "Input file wrong number of uncertainties.")
-  var uncertainties : double[NUM_U_INPUT]
-  for i=0, NUM_U_INPUT do
-    var value : double[1]
-    regentlib.assert(read_line(f, value), "Less data than expected")
-    uncertainties[i]=value[0]
-  end
-  C.fclose(f)
-  
-  --for i = 0, 10 do
-  --  C.printf("%f\n", uncertainties[i])
+  -- Read in uncertaint parameter (if reading uncertainties from file)
+  --var f : &C.FILE
+  --f = C.fopen("uncertainties_200000.txt", "rb")
+  --read_header(f)
+  --var uncertainties : double[NUM_U_INPUT]
+  --for i=0, NUM_U_INPUT do
+  --  var value : double[1]
+  --  regentlib.assert(read_line(f, value), "Less data than expected")
+  --  uncertainties[i]=value[0]
   --end
-
- -- var fp = C.fopen('rand_1000.csv', 1024, "r")
- -- var line : int8[1024]
- -- for i=0, 10 do
- --   C.fgets(line, 1024, fp)
- --   var index = C.atoi(C.strtok(line, ","))
- --   C.printf('%d \n', index)
- --   var mass_x = 0.0
- --   mass_x = C.atof(C.strtok([&int8](0), ","))
- --   C.printf('%d \n', i)
- --   C.printf('%f \n', mass_x)
- --   --C.printf(C.fgets(line, 1024, fp))
- --   --var u = C.fgets(line, fp)
- --   --C.printf('%f \n', C.fgets(line, fp))
- -- end
- -- C.fclose(fp)
-
+  --C.fclose(f)
+  
   var iter_print = 0
   for iter = 0, MAX_ITERS do
     -- Run remaining samples for all levels.
@@ -224,34 +177,16 @@ task main()
           samples[{lvl,i}].mesh_size_l_1 = mesh_sizes[lvl-1]
         end
         for j = 0, NUM_UNCERTAINTIES do
-          --samples[{lvl,i}].uncertainties[j] = .5
-          --samples[{lvl,i}].uncertainties[j] = C.drand48()
-          samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
+          samples[{lvl,i}].uncertainties[j] = C.drand48()
+          --samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
+          C.printf('lvl %d, i %d, uncertainty %e\n', lvl, i, samples[{lvl, i}].uncertainties[j]) 
         end
-        -- Invoke `eval_samples` for a set of samples containing just the
-        -- newly created sample. This task will be launched asynchronously; the
-        -- main task will continue running and launching new tasks. The runtime
-        -- will analyze the dependencies between the newly launched task and
-        -- all tasks launched before it. It will conclude that the new task is
-        -- independent from all the others, and thus can be queued to run
-        -- immediately.
         eval_samples(p_samples_fine[{lvl,i}])
       end
-      --C.printf('level: %d \n', lvl)
-      --C.printf('pre num_samples[lvl]: %d \n', num_samples[lvl])
       num_samples[lvl] max= opt_samples[lvl]
-      --C.printf('post num_samples[lvl]: %d \n', num_samples[lvl])
-      --C.printf('opt_samples[lvl]: %d \n', opt_samples[lvl])
     end
     -- Update estimates for central moments.
-    -- Update estimates for central moments.
     for lvl = 0, NUM_LEVELS do
-      -- At this point we switch to using the partition by level; the runtime
-      -- will analyze the dependencies and conclude that the call to
-      -- `calc_mean` has a read-after-write dependency with all the preceding
-      -- calls to `eval_samples` for samples on the same level. Therefore, the
-      -- execution of `calc_mean` will have to wait until those tasks have
-      -- completed (the main task is free to continue emitting tasks, however).
       y_mean[lvl] = calc_mean(p_samples_by_level[{lvl,0}])
       y_var[lvl] = calc_var(p_samples_by_level[{lvl,0}], y_mean[lvl], num_samples[lvl])
       y_var[lvl] max= 0.0 
@@ -268,7 +203,7 @@ task main()
       regentlib.assert(opt_samples[lvl] < MAX_SAMPLES_PER_LEVEL,
                        'Please increase MAX_SAMPLES_PER_LEVEL')
     end
-    -- Print output.
+    -- Print output for this iteration
     --C.printf('Iteration %d:\n', iter)
     --C.printf('  y_costs =')
     --for lvl = 0, NUM_LEVELS do
@@ -291,6 +226,7 @@ task main()
     --  C.printf(' %d', opt_samples[lvl])
     --end
     --C.printf('\n')
+
     -- Decide if we have converged.
     var opt_samples_ran = true
     for lvl = 0, NUM_LEVELS do
@@ -304,6 +240,7 @@ task main()
     end
     iter_print += 1
   end
+
   -- Compute MLMC estimator mean & variance.
   var ml_mean = 0.0
   for lvl = 0, NUM_LEVELS do
@@ -314,7 +251,7 @@ task main()
     ml_var += y_var[lvl] / num_samples[lvl]
   end
 
-  --print final results
+  -- print final results
   __fence(__execution, __block)
   C.printf('iterations = %d \n', iter_print+1)
   C.printf('num_samples =')

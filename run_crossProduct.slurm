@@ -11,7 +11,7 @@
 
 NODES="1"
 CPUS="4"
-OUTPUT="20190809_scaling/no_profile/mean_crossProduct__maxSamples100000_initial40000_sizeBatch5000_tolerance001_"$NODES"nodes_"$CPUS"cpu"
+OUTPUT="debug/crossProduct_"$NODES"nodes_"$CPUS"cpu"
 
 export INCLUDE_PATH=.
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH:-}:."

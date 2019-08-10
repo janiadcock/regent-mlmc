@@ -179,8 +179,14 @@ task main()
           samples[{lvl,i}].uncertainties[j] = C.drand48()
           --samples[{lvl,i}].uncertainties[j] = uncertainties[lvl*MAX_SAMPLES_PER_LEVEL + i] --not set up for NUM_UNCERTAINTIES > 0 yet
         end
+      end
+    end
+    for lvl = 0, NUM_LEVELS do
+      for i=num_samples[lvl], opt_samples[lvl] do
         eval_samples(p_samples_fine[{lvl,i}])
       end
+    end
+    for lvl = 0, NUM_LEVELS do
       num_samples[lvl] max= opt_samples[lvl]
     end
     -- Update estimates for central moments.
